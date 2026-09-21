@@ -1,4 +1,4 @@
-# 🔐 PASSWORD STRENGTH ANALYZER
+# 🔐 PassGuard — Password Strength Analyzer
 
 A full-stack cybersecurity web application that audits passwords, detects breached/common credentials,
 computes entropy and crack-times, and produces pentest-grade reports.
