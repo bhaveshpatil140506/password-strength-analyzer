@@ -429,6 +429,10 @@ h1, h2, h3, h4 {
   gap: 20px;
 }
 
+.grid > * {
+  min-width: 0;
+}
+
 .grid-3 {
   grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
 }
@@ -744,6 +748,7 @@ h1, h2, h3, h4 {
   border-radius: 10px;
   background: var(--bg-panel);
   width: 100%;
+  max-width: 100%;
 }
 
 table {
