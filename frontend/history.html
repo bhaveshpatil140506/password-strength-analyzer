@@ -1,0 +1,81 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PassGuard :: History</title>
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="icon" href="images/logo.svg" type="image/svg+xml">
+  <style>
+    .modal-overlay {
+      display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.8);
+      z-index: 1500; align-items: center; justify-content: center; padding: 5%;
+    }
+    .modal-overlay.open { display: flex; }
+    .modal-box {
+      background: var(--bg-panel); border: 1px solid var(--matrix-green);
+      border-radius: 12px; padding: 30px; max-width: 520px; width: 100%;
+      box-shadow: var(--shadow-green); animation: fadeInUp .4s ease;
+    }
+.modal-box h3 { color: var(--matrix-green); font-family: var(--font-terminal); margin-bottom: 16px; }
+  </style>
+</head>
+<body>
+  <canvas id="matrix-canvas" class="matrix-bg"></canvas>
+  <div class="scanlines"></div>
+
+  <nav class="navbar">
+    <a class="brand" href="index.html"><span class="brand-icon">🔐</span> Pass<span style="color:var(--neon-cyan)">Guard</span></a>
+    <ul class="nav-links" id="nav-links">
+      <li><a href="dashboard.html">Dashboard</a></li>
+      <li><a href="analyzer.html">Analyzer</a></li>
+      <li><a href="history.html" class="active">History</a></li>
+      <li><a href="recommendations.html">Security Tips</a></li>
+      <li><a href="report.html">Report</a></li>
+      <li id="nav-admin" style="display:none;"><a href="admin_dashboard.html" style="color:var(--toxic-red)">Admin</a></li>
+      <li><span id="user-badge" class="terminal-text muted" style="font-size:.75rem;"></span></li>
+      <li id="nav-auth-area"></li>
+    </ul>
+    <button class="burger" onclick="document.getElementById('nav-links').classList.toggle('open')"><span></span><span></span><span></span></button>
+  </nav>
+
+  <section class="section">
+    <h2 class="section-title">// PASSWORD HISTORY <span class="muted" id="history-count" style="font-size:.9rem;"></span></h2>
+
+    <div class="grid grid-2" style="grid-template-columns:1fr; margin-top:10px;">
+      <div>
+        <div class="table-wrapper">
+          <table>
+            <thead><tr>
+              <th>ID</th><th>Password</th><th>Rating</th><th>Score</th><th>Entropy</th>
+              <th>Crack Time</th><th>Common</th><th>Breaches</th><th>Analyzed</th><th>Actions</th>
+            </tr></thead>
+            <tbody id="history-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <div class="chart-container" style="margin-top:30px;">
+      <h3>▌ ANALYSIS FEED</h3>
+      <div class="terminal-feed" id="history-feed"></div>
+    </div>
+  </section>
+
+  <div class="modal-overlay" id="detail-modal">
+    <div class="modal-box">
+      <h3>// ANALYSIS DETAILS</h3>
+      <div class="modal-body"></div>
+      <button class="btn btn-sm" id="modal-close" style="margin-top:18px;">CLOSE</button>
+    </div>
+  </div>
+
+  <footer class="footer"><p>PASSWORD STRENGTH ANALYZER — HISTORY NODE</p></footer>
+
+  <script src="js/common.js"></script>
+  <script src="js/history.js"></script>
+</body>
+</html>
+
+
+

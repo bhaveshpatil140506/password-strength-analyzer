@@ -1,0 +1,67 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PassGuard :: Recommendations</title>
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="icon" href="images/logo.svg" type="image/svg+xml">
+</head>
+<body>
+  <canvas id="matrix-canvas" class="matrix-bg"></canvas>
+  <div class="scanlines"></div>
+
+  <nav class="navbar">
+    <a class="brand" href="index.html"><span class="brand-icon">🔐</span> Pass<span style="color:var(--neon-cyan)">Guard</span></a>
+    <ul class="nav-links" id="nav-links">
+      <li><a href="dashboard.html">Dashboard</a></li>
+      <li><a href="analyzer.html">Analyzer</a></li>
+      <li><a href="history.html">History</a></li>
+      <li><a href="recommendations.html" class="active">Security Tips</a></li>
+      <li><a href="report.html">Report</a></li>
+      <li id="nav-admin" style="display:none;"><a href="admin_dashboard.html" style="color:var(--toxic-red)">Admin</a></li>
+      <li><span id="user-badge" class="terminal-text muted" style="font-size:.75rem;"></span></li>
+      <li id="nav-auth-area"></li>
+    </ul>
+    <button class="burger" onclick="document.getElementById('nav-links').classList.toggle('open')"><span></span><span></span><span></span></button>
+  </nav>
+
+  <section class="section">
+    <h2 class="section-title">// SECURITY RECOMMENDATIONS MODULE</h2>
+
+    <div class="alert alert-info show" style="display:block; margin-bottom:26px;">
+      The system generates <b class="cyan-text">personalized recommendations</b> from your actual password analysis history, plus a fixed set of best practices.
+    </div>
+
+    <div class="grid grid-2">
+      <div>
+        <h3 style="color:var(--neon-cyan); font-family:var(--font-terminal); margin-bottom:18px; font-size:1.05rem;">▌ BEST PRACTICES</h3>
+        <div id="rec-list" data-wide="true"></div>
+      </div>
+      <div>
+        <h3 style="color:var(--matrix-green); font-family:var(--font-terminal); margin-bottom:18px; font-size:1.05rem;">▌ YOUR ANALYSIS-BASED TIPS</h3>
+        <div id="rec-history">
+          <div class="empty-state">LOADING PERSONALIZED TIPS...</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="chart-container" style="margin-top:30px;">
+      <h3>▌ QUICK ACTIONS</h3>
+      <div style="display:flex; gap:12px; flex-wrap:wrap; margin-top:14px;">
+        <a href="analyzer.html" class="btn btn-solid">▶ Analyze a Password</a>
+        <a href="history.html" class="btn btn-cyan">🗃 Review History</a>
+        <a href="report.html" class="btn">📄 Generate Report</a>
+      </div>
+    </div>
+  </section>
+
+  <footer class="footer"><p>PASSWORD STRENGTH ANALYZER — SECURITY RECOMMENDATIONS NODE</p></footer>
+
+  <script src="js/common.js"></script>
+  <script src="js/recommendations.js"></script>
+</body>
+</html>
+
+
+

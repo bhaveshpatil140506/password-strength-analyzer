@@ -1,0 +1,51 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PassGuard :: Report</title>
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="icon" href="images/logo.svg" type="image/svg+xml">
+</head>
+<body>
+  <canvas id="matrix-canvas" class="matrix-bg"></canvas>
+  <div class="scanlines"></div>
+
+  <nav class="navbar">
+    <a class="brand" href="index.html"><span class="brand-icon">🔐</span> Pass<span style="color:var(--neon-cyan)">Guard</span></a>
+    <ul class="nav-links" id="nav-links">
+      <li><a href="dashboard.html">Dashboard</a></li>
+      <li><a href="analyzer.html">Analyzer</a></li>
+      <li><a href="history.html">History</a></li>
+      <li><a href="recommendations.html">Security Tips</a></li>
+      <li><a href="report.html" class="active">Report</a></li>
+      <li id="nav-admin" style="display:none;"><a href="admin_dashboard.html" style="color:var(--toxic-red)">Admin</a></li>
+      <li><span id="user-badge" class="terminal-text muted" style="font-size:.75rem;"></span></li>
+      <li id="nav-auth-area"></li>
+    </ul>
+    <button class="burger" onclick="document.getElementById('nav-links').classList.toggle('open')"><span></span><span></span><span></span></button>
+  </nav>
+
+  <section class="section">
+    <div style="display:flex; justify-content:space-between; align-items:center; gap:20px; flex-wrap:wrap;">
+      <h2 class="section-title" style="margin-bottom:0;">// SECURITY REPORT</h2>
+      <div class="terminal-text muted" style="font-size:.8rem;">
+        generated: <span id="report-timestamp" class="cyan-text">...</span> |
+        user: <span id="report-username" class="matrix-green">...</span>
+      </div>
+    </div>
+
+    <div id="report-content" style="margin-top:30px;">
+      <div class="loading show"><div class="typing-indicator">INITIALIZING REPORT ENGINE <span>.</span><span>.</span><span>.</span></div></div>
+    </div>
+  </section>
+
+  <footer class="footer"><p>PASSWORD STRENGTH ANALYZER — REPORT GENERATION NODE</p></footer>
+
+  <script src="js/common.js"></script>
+  <script src="js/report.js"></script>
+</body>
+</html>
+
+
+

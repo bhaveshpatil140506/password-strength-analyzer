@@ -1,0 +1,107 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PassGuard :: Registration</title>
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="icon" href="images/logo.svg" type="image/svg+xml">
+</head>
+<body>
+  <canvas id="matrix-canvas" class="matrix-bg"></canvas>
+  <div class="scanlines"></div>
+
+  <nav class="navbar">
+    <a class="brand" href="index.html"><span class="brand-icon">🔐</span> Pass<span style="color:var(--neon-cyan)">Guard</span></a>
+    <ul class="nav-links" id="nav-links">
+      <li><a href="index.html">Home</a></li>
+      <li><a href="analyzer.html">Analyzer</a></li>
+      <li><a href="login.html">Login</a></li>
+      <li><a href="register.html" class="active">Register</a></li>
+    </ul>
+    <button class="burger" onclick="document.getElementById('nav-links').classList.toggle('open')"><span></span><span></span><span></span></button>
+  </nav>
+
+  <div class="form-container">
+    <h2 class="section-title" style="font-size:1.3rem;">REGISTRATION</h2>
+    <div id="alert-box"></div>
+
+    <form id="register-form" novalidate>
+      <div class="form-group">
+        <label for="fullname">FULL NAME</label>
+        <input type="text" id="fullname" placeholder="Enter your full name" autocomplete="name">
+        <div class="error-msg" id="fullname-error"></div>
+      </div>
+      <div class="form-group">
+        <label for="username">USERNAME</label>
+        <input type="text" id="username" placeholder="letters, numbers, underscores" autocomplete="username">
+        <div class="error-msg" id="username-error"></div>
+      </div>
+      <div class="form-group">
+        <label for="email">EMAIL</label>
+        <input type="email" id="email" placeholder="you@example.com" autocomplete="email">
+        <div class="error-msg" id="email-error"></div>
+      </div>
+      <div class="form-group">
+        <label for="password">PASSWORD</label>
+        <div class="input-wrapper">
+          <input type="password" id="password" placeholder="Create a strong password" autocomplete="new-password">
+          <button type="button" class="toggle-password" data-target="password">●</button>
+        </div>
+        <div class="strength-meter"><div class="strength-fill" id="password-meter"></div></div>
+        <div class="strength-stats">
+          <span id="password-label" style="color:var(--text-muted)">NONE</span>
+          <span class="muted" style="font-size:.75rem;">METER</span>
+        </div>
+        <div class="error-msg" id="password-error"></div>
+      </div>
+
+      <div class="form-group">
+        <label>PASSWORD CRITERIA</label>
+        <ul class="criteria-list" id="password-criteria" style="border:1px solid var(--border-glow); border-radius:8px; padding:10px 14px; background:var(--bg-deep);">
+        </ul>
+      </div>
+
+      <div class="form-group">
+        <label for="password_confirm">CONFIRM PASSWORD</label>
+        <div class="input-wrapper">
+          <input type="password" id="password_confirm" placeholder="Re-enter password" autocomplete="new-password">
+          <button type="button" class="toggle-password" data-target="password_confirm">●</button>
+        </div>
+        <div class="error-msg" id="password_confirm-error"></div>
+      </div>
+
+      <div class="form-group">
+        <label for="security_question">SECURITY QUESTION (optional)</label>
+        <select id="security_question">
+          <option value="">-- Choose a question --</option>
+          <option value="What was your first pet's name?">What was your first pet's name?</option>
+          <option value="What city were you born in?">What city were you born in?</option>
+          <option value="What is your mother's maiden name?">What is your mother's maiden name?</option>
+          <option value="What was your childhood nickname?">What was your childhood nickname?</option>
+          <option value="What is your favorite book?">What is your favorite book?</option>
+        </select>
+        <div class="error-msg" id="security_question-error"></div>
+      </div>
+      <div class="form-group">
+        <label for="security_answer">SECURITY ANSWER</label>
+        <input type="password" id="security_answer" placeholder="Answer to security question">
+        <div class="error-msg" id="security_answer-error"></div>
+      </div>
+
+      <button type="submit" class="btn btn-solid" id="register-btn" style="width:100%;">CREATE ACCOUNT</button>
+    </form>
+
+    <div class="form-link">Already have an account? <a href="login.html">Authenticate here</a></div>
+  </div>
+
+  <footer class="footer"><p>PASSWORD STRENGTH ANALYZER — REGISTRATION NODE</p></footer>
+
+  <script src="js/common.js"></script>
+  <script src="js/validations.js"></script>
+  <script src="js/auth.js"></script>
+</body>
+</html>
+
+
+

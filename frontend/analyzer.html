@@ -1,0 +1,89 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PassGuard :: Password Analyzer</title>
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="icon" href="images/logo.svg" type="image/svg+xml">
+</head>
+<body>
+  <canvas id="matrix-canvas" class="matrix-bg"></canvas>
+  <div class="scanlines"></div>
+
+  <nav class="navbar">
+    <a class="brand" href="index.html"><span class="brand-icon">🔐</span> Pass<span style="color:var(--neon-cyan)">Guard</span></a>
+    <ul class="nav-links" id="nav-links">
+      <li><a href="index.html">Home</a></li>
+      <li><a href="analyzer.html" class="active">Analyzer</a></li>
+      <li><a href="history.html">History</a></li>
+      <li><a href="recommendations.html">Security Tips</a></li>
+      <li><a href="report.html">Report</a></li>
+      <li id="nav-admin" style="display:none;"><a href="admin_dashboard.html" style="color:var(--toxic-red)">Admin</a></li>
+      <li><span id="user-badge" class="terminal-text muted" style="font-size:.75rem;"></span></li>
+      <li id="nav-auth-area"></li>
+    </ul>
+    <button class="burger" onclick="document.getElementById('nav-links').classList.toggle('open')"><span></span><span></span><span></span></button>
+  </nav>
+
+  <div class="analyzer-layout" style="grid-template-columns:none; max-width:1200px; margin:40px auto; padding:0 5%;">
+    <div class="analyzer-panel" style="max-width:820px; margin:0 auto; width:100%;">
+      <h2><span class="blink">▌</span> PASSWORD INPUT &amp; STRENGTH ANALYSIS</h2>
+
+      <div class="alert alert-info show" style="display:block;">
+        Your password is <b>never transmitted or stored</b> for analysis when running locally. Backend persistence stores only the masked placeholder.
+      </div>
+
+      <div class="form-group" style="margin-top:20px;">
+        <label for="password" style="font-size:.95rem;">ENTER PASSWORD TO AUDIT</label>
+        <div class="input-wrapper">
+          <input type="password" id="password" placeholder="Type a password to analyze..." autocomplete="off" style="font-size:1.1rem; letter-spacing:2px;">
+          <button type="button" class="toggle-password" data-target="password">●</button>
+        </div>
+        <div class="strength-meter" style="height:14px;"><div class="strength-fill" id="password-meter"></div></div>
+        <div class="strength-stats">
+          <span id="password-label" style="color:var(--text-muted)">NONE</span>
+          <span class="muted" style="font-size:.75rem;">LIVE METER</span>
+        </div>
+      </div>
+
+      <div class="grid grid-2" style="gap:18px; margin-top:8px;">
+        <div>
+          <label style="display:block; margin-bottom:8px; font-family:var(--font-terminal); font-size:.82rem; color:var(--text-secondary);">CHECKLIST</label>
+          <ul class="criteria-list" id="password-criteria" style="border:1px solid var(--border-glow); border-radius:8px; padding:10px 14px; background:var(--bg-deep);"></ul>
+        </div>
+        <div>
+          <label style="display:block; margin-bottom:8px; font-family:var(--font-terminal); font-size:.82rem; color:var(--text-secondary);">COMMAND CENTER</label>
+          <div style="display:flex; flex-direction:column; gap:10px;">
+            <button class="btn btn-solid" onclick="PSA_AnalyzerPage.run()">▶ RUN ANALYSIS</button>
+            <button class="btn btn-cyan btn-sm" onclick="PSA_Analyzer.generateStrongSuggestion()">⚡ Generate Strong Password</button>
+            <button class="btn btn-sm" onclick="document.getElementById('password').value=''; document.getElementById('password').dispatchEvent(new Event('input')); PSA_AnalyzerPage.clearResult();">✕ Clear</button>
+          </div>
+          <div id="generated-password" style="margin-top:14px; display:none;">
+            <div class="analyzer-panel" style="padding:14px; margin:0; background:var(--bg-deep);">
+              <div id="generated-pw-value" style="font-family:var(--font-terminal); font-size:1.05rem; color:var(--neon-cyan); word-break:break-all; margin-bottom:8px;"></div>
+              <div style="display:flex; gap:8px;">
+                <button class="btn btn-sm btn-cyan" onclick="PSA_Analyzer.copyGenerated()">Copy</button>
+                <button class="btn btn-sm" onclick="PSA_Analyzer.useGenerated()">Use</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div id="analysis-result" class="analysis-result" style="margin-top:28px;"></div>
+    </div>
+  </div>
+
+  <footer class="footer"><p>PASSWORD STRENGTH ANALYZER — ANALYSIS NODE</p></footer>
+
+<script src="js/common.js"></script>
+<script src="js/validations.js"></script>
+<script src="js/analyzer.js"></script>
+<script src="js/report.js"></script>
+<script src="js/analyzer_page.js"></script>
+</body>
+</html>
+
+
+

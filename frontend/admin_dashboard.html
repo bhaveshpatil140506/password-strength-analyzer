@@ -1,0 +1,79 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PassGuard :: Admin Dashboard</title>
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="icon" href="images/logo.svg" type="image/svg+xml">
+</head>
+<body>
+  <canvas id="matrix-canvas" class="matrix-bg"></canvas>
+  <div class="scanlines"></div>
+
+  <nav class="navbar">
+    <a class="brand" href="index.html"><span class="brand-icon">🔐</span> Pass<span style="color:var(--neon-cyan)">Guard</span></a>
+    <ul class="nav-links" id="nav-links">
+      <li><a href="dashboard.html">Dashboard</a></li>
+      <li><a href="analyzer.html">Analyzer</a></li>
+      <li><a href="history.html">History</a></li>
+      <li><a href="report.html">Report</a></li>
+      <li><a href="admin_dashboard.html" class="active" style="color:var(--toxic-red)">Admin</a></li>
+      <li><span id="user-badge" class="terminal-text muted" style="font-size:.75rem;"></span></li>
+      <li id="nav-auth-area"></li>
+    </ul>
+    <button class="burger" onclick="document.getElementById('nav-links').classList.toggle('open')"><span></span><span></span><span></span></button>
+  </nav>
+
+  <section class="section">
+    <div style="display:flex; justify-content:space-between; align-items:center; gap:16px; flex-wrap:wrap;">
+      <h2 class="section-title" style="margin-bottom:0;">
+        <span style="color:var(--toxic-red)">//</span> ADMIN DASHBOARD
+        <span class="muted" style="font-size:.85rem;">root: <span id="admin-name" class="danger">...</span></span>
+      </h2>
+      <span class="terminal-text muted" id="admin-stats-text" style="font-size:.75rem;"></span>
+    </div>
+
+    <div class="grid grid-2" style="grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); margin-top:30px;">
+      <div class="counter-card"><div class="counter" id="users-total">0</div><div class="counter-label">Total Users</div></div>
+      <div class="counter-card"><div class="counter" id="passwords-total">0</div><div class="counter-label">Total Analyses</div></div>
+      <div class="counter-card"><div class="counter" id="common-total" style="color:var(--warning-amber);">0</div><div class="counter-label">Common Flags</div></div>
+      <div class="counter-card"><div class="counter" id="breaches-total" style="color:var(--toxic-red);">0</div><div class="counter-label">Breach Hits</div></div>
+      <div class="counter-card"><div class="counter" id="reports-total" style="color:var(--neon-cyan);">0</div><div class="counter-label">Reports</div></div>
+      <div class="counter-card"><div class="counter" id="active-today" style="color:var(--matrix-green);">0</div><div class="counter-label">Active Today</div></div>
+    </div>
+
+    <div class="grid grid-2" style="margin-top:26px;">
+      <div class="chart-container">
+        <h3>▌ WEEKLY ACTIVITY</h3>
+        <canvas id="week-chart" width="470" height="220"></canvas>
+      </div>
+      <div class="chart-container">
+        <h3>▌ LIVE SYSTEM LOG</h3>
+        <div class="terminal-feed" id="admin-feed"></div>
+      </div>
+    </div>
+
+    <div class="chart-container" style="margin-top:26px;">
+      <h3>▌ USER MANAGEMENT <span class="muted" style="font-size:.75rem;">(ban / unban / delete)</span></h3>
+      <div class="table-wrapper" style="margin-top:14px;">
+        <table>
+          <thead><tr>
+            <th>ID</th><th>Username</th><th>Full Name</th><th>Email</th><th>Role</th>
+            <th>Status</th><th>Analyses</th><th>Last Login</th><th>Actions</th>
+          </tr></thead>
+          <tbody id="users-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <footer class="footer"><p>PASSWORD STRENGTH ANALYZER — ADMIN NODE (RESTRICTED AREA)</p></footer>
+
+  <script src="js/common.js"></script>
+  <script src="js/admin.js"></script>
+</body>
+</html>
+
+
+

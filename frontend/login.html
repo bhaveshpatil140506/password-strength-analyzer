@@ -1,0 +1,63 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PassGuard :: Login</title>
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="icon" href="images/logo.svg" type="image/svg+xml">
+</head>
+<body>
+  <canvas id="matrix-canvas" class="matrix-bg"></canvas>
+  <div class="scanlines"></div>
+
+  <nav class="navbar">
+    <a class="brand" href="index.html"><span class="brand-icon">🔐</span> Pass<span style="color:var(--neon-cyan)">Guard</span></a>
+    <ul class="nav-links" id="nav-links">
+      <li><a href="index.html">Home</a></li>
+      <li><a href="analyzer.html">Analyzer</a></li>
+      <li><a href="login.html" class="active">Login</a></li>
+      <li><a href="register.html">Register</a></li>
+    </ul>
+    <button class="burger" onclick="document.getElementById('nav-links').classList.toggle('open')"><span></span><span></span><span></span></button>
+  </nav>
+
+  <div class="form-container">
+<h2 class="section-title" style="font-size:1.3rem; margin-bottom:14px;">AUTHENTICATION</h2>
+    <div id="alert-box"></div>
+
+    <div class="terminal-text muted" style="font-size:.75rem; margin-bottom:14px; border:1px dashed var(--border-glow); padding:8px 12px; border-radius:8px;">
+      <span style="color:var(--matrix-green)">$</span> ssh psa@secure-node <span class="blink">▮</span><br>
+      <span style="color:var(--text-muted)">default admin :: admin / Admin@123</span>
+    </div>
+
+    <form id="login-form" novalidate>
+      <div class="form-group">
+        <label for="username">USERNAME</label>
+        <input type="text" id="username" placeholder="Enter your username" autocomplete="username">
+        <div class="error-msg" id="username-error"></div>
+      </div>
+      <div class="form-group">
+        <label for="password">PASSWORD</label>
+        <div class="input-wrapper">
+          <input type="password" id="password" placeholder="Enter your password" autocomplete="current-password">
+          <button type="button" class="toggle-password" data-target="password">●</button>
+        </div>
+        <div class="error-msg" id="password-error"></div>
+      </div>
+      <button type="submit" class="btn btn-solid" id="login-btn" style="width:100%; margin-top:4px;">ACCESS SYSTEM</button>
+    </form>
+
+    <div class="form-link">Don't have an account? <a href="register.html">Register now</a></div>
+  </div>
+
+  <footer class="footer"><p>PASSWORD STRENGTH ANALYZER — AUTHENTICATION NODE</p></footer>
+
+  <script src="js/common.js"></script>
+  <script src="js/validations.js"></script>
+  <script src="js/auth.js"></script>
+</body>
+</html>
+
+
+
