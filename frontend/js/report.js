@@ -1,5 +1,5 @@
 ﻿/* ============================================================
-   PASSWORD STRENGTH ANALYZER - REPORT GENERATION MODULE
+   PASSWORD STRENGTH ANALYZER - REPORT GENERATION
    ============================================================ */
 
 const PSA_Report = {
@@ -40,7 +40,8 @@ const PSA_Report = {
       if (!res.success) { content.innerHTML = `<div class="empty-state">${PSA.escapeHtml(res.message || 'REPORT FAILED')}</div>`; return; }
       this.renderFull(res.data);
     } catch {
-      this.renderDemo();
+      content.innerHTML = '<div class="empty-state">Your report could not load. Check the server connection and refresh.</div>';
+      PSA.toast('Report unavailable. Check the server connection.', 'error');
     }
   },
 
@@ -147,16 +148,6 @@ const PSA_Report = {
     });
   },
 
-  renderDemo() {
-    const d = {
-      total_analyses: 24, avg_strength: 4.2, weak_passwords: 6, medium_passwords: 4,
-      strong_passwords: 14, excellent_passwords: 0, common_detected: 3, analyses: [],
-      recommendations: [{ severity: 'low', title: 'DEMO DATA', desc: 'Backend report API unreachable — showing sample figures. Start the XAMPP/PHP server to persist reports.' }]
-    };
-    this.renderFull(d);
-    PSA.toast('Displaying demo report (PHP API offline)', 'info');
-  },
-
   healthLabel(avg) {
     if (avg >= 6.5) return 'EXCELLENT';
     if (avg >= 5) return 'GOOD';
@@ -168,8 +159,13 @@ const PSA_Report = {
     const d = PSA_Report._data;
     if (!d || !d.analyses.length) { PSA.toast('Nothing to export', 'error'); return; }
     const header = ['ID', 'Password', 'Score', 'Label', 'Entropy', 'CrackTime', 'Common', 'Breaches'];
-    const rows = d.analyses.map(a => [a.id, `"${a.password_placeholder}"`, a.strength_score, a.strength_label, a.entropy, `"${a.estimated_crack_time}"`, a.is_common, a.breached_count]);
-    const csv = [header, ...rows].map(r => r.join(',')).join('\n');
+    const csvCell = value => {
+      let text = String(value ?? '');
+      if (/^[\s]*[=+@-]/.test(text)) text = `'${text}`;
+      return `"${text.replace(/"/g, '""')}"`;
+    };
+    const rows = d.analyses.map(a => [a.id, a.password_placeholder, a.strength_score, a.strength_label, a.entropy, a.estimated_crack_time, a.is_common, a.breached_count]);
+    const csv = [header, ...rows].map(row => row.map(csvCell).join(',')).join('\n');
     this.download(`PassGuard_Report_${Date.now()}.csv`, csv, 'text/csv');
   },
 

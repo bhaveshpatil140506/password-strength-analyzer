@@ -5,6 +5,7 @@ from . import views
 urlpatterns = [
     path('register', views.api_register, name='api-register'),
     path('login', views.api_login, name='api-login'),
+    path('session', views.api_session, name='api-session'),
     path('analyze', views.api_analyze, name='api-analyze'),
     path('common-check', views.api_common_check, name='api-common-check'),
     path('history', views.api_history, name='api-history'),

@@ -31,6 +31,20 @@ CREATE TABLE IF NOT EXISTS users (
     PRIMARY KEY (id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
+-- Opaque API sessions are stored as hashes so client supplied IDs alone
+-- never grant access to user or admin data.
+CREATE TABLE IF NOT EXISTS api_sessions (
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    user_id INT(11) NOT NULL,
+    token_hash CHAR(64) NOT NULL UNIQUE,
+    expires_at DATETIME NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (id),
+    KEY idx_api_sessions_user_expiry (user_id, expires_at),
+    CONSTRAINT fk_api_sessions_user FOREIGN KEY (user_id)
+        REFERENCES users (id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
 -- ------------------------------------------------------------
 -- TABLE: analyzed_passwords (Password Analysis Module / History)
 -- ------------------------------------------------------------

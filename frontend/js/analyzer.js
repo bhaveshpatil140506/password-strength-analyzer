@@ -22,7 +22,7 @@ const PSA_Analyzer = {
     if (/[0-9]/.test(pw)) pool += 10;
     if (/[^A-Za-z0-9]/.test(pw)) pool += 33;
     if (pool === 0) return 0;
-    return pw.length * Math.log2(pool);
+    return [...pw].length * Math.log2(pool);
   },
 
   /* ---------- Estimated crack time (@10 billion guesses/sec) ---------- */
@@ -40,11 +40,11 @@ const PSA_Analyzer = {
 
   /* ---------- Brute-force link speed odds ---------- */
   linkSpeed(entropy) {
-    if (entropy < 28) return { label: 'Cracked instantly', odds: '1 in 1' };
-    if (entropy < 36) return { label: 'Cracked within minutes', odds: '1 in 10' };
-    if (entropy < 60) return { label: 'Cracked within months', odds: '1 in 100' };
-    if (entropy < 80) return { label: 'Safe for decades', odds: '1 in 10,000,000' };
-    return { label: 'Effectively unbreakable', odds: '1 in 10^20' };
+    if (entropy < 28) return 'Cracked instantly';
+    if (entropy < 36) return 'Cracked within minutes';
+    if (entropy < 60) return 'Cracked within months';
+    if (entropy < 80) return 'Safe for decades';
+    return 'Effectively unbreakable';
   },
 
   /* ---------- Common password detection ---------- */
@@ -54,17 +54,22 @@ const PSA_Analyzer = {
 
   /* ---------- Detect leaked password via web API (HaveIBeenPwned k-anonymity) ---------- */
   async checkBreached(pw) {
+    let timer;
     try {
       const hash = await this.sha1(pw);
       const prefix = hash.slice(0, 5);
       const suffix = hash.slice(5).toUpperCase();
-      const res = await fetch(`https://api.pwnedpasswords.com/range/${prefix}`);
-      if (!res.ok) return 0;
+      const controller = new AbortController();
+      timer = setTimeout(() => controller.abort(), 7000);
+      const res = await fetch(`https://api.pwnedpasswords.com/range/${prefix}`, { signal: controller.signal });
+      if (!res.ok) return null;
       const text = await res.text();
-      const match = text.split('\r\n').find(line => line.split(':')[0] === suffix);
+      const match = text.split(/\r?\n/).find(line => line.split(':')[0] === suffix);
       return match ? parseInt(match.split(':')[1], 10) : 0;
     } catch {
-      return 0;
+      return null;
+    } finally {
+      clearTimeout(timer);
     }
   },
 
@@ -77,7 +82,7 @@ const PSA_Analyzer = {
   /* ---------- Security recommendations building ---------- */
   buildRecommendations(result) {
     const recs = [];
-    const { checks, length } = result;
+    const { checks } = result;
 
     if (!checks.length8) recs.push({
       severity: 'high',
@@ -131,7 +136,7 @@ const PSA_Analyzer = {
   async analyze(pw) {
     const placeholder = pw.slice(0, 2) + '********' + pw.slice(-1);
     const entropy = this.calculateEntropy(pw);
-    const length = pw.length;
+    const length = [...pw].length;
 
     const checks = {
       length8: length >= 8,
@@ -154,16 +159,17 @@ const PSA_Analyzer = {
 
     const isCommon = this.isCommon(pw);
     const crackTime = this.estimateCrackTime(entropy);
-    const link = this.linkSpeed(entropy);
-    const breached = await this.checkBreached(pw);
+    const linkLabel = this.linkSpeed(entropy);
+    const breachResult = await this.checkBreached(pw);
+    const breached = breachResult ?? 0;
 
     const result = {
       placeholder, score, entropy: Math.round(entropy * 100) / 100,
       label, strengthColor, length,
       has_uppercase: checks.uppercase, has_lowercase: checks.lowercase,
       has_numbers: checks.numbers, has_special: checks.special,
-      crackTime, linkLabel: link.label, linkOdds: link.odds,
-      isCommon, breached, checks,
+      crackTime, linkLabel,
+      isCommon, breached, breachCheckUnavailable: breachResult === null, checks,
     };
     result.recommendations = this.buildRecommendations(result);
     return result;
@@ -182,6 +188,9 @@ const PSA_Analyzer = {
     const breachAlert = !result.isCommon && result.breached > 0
       ? '<div class="common-alert show"><span>&#9760;</span><div><strong>LEAKED PASSWORD</strong><br>This password was found in ' + result.breached.toLocaleString() + ' real-world data breaches. Do NOT use it.</div></div>'
       : '';
+    const breachUnavailableAlert = result.breachCheckUnavailable
+      ? '<div class="alert alert-info show"><strong>BREACH LOOKUP UNAVAILABLE</strong><br>Other checks completed. Recheck with an internet connection to confirm whether this password appears in known breaches.</div>'
+      : '';
 
     box.innerHTML = `
       <div class="result-header">
@@ -199,6 +208,7 @@ const PSA_Analyzer = {
 
       ${commonAlert}
       ${breachAlert}
+      ${breachUnavailableAlert}
 
       <div class="stats-grid result-stats">
         <div class="stat-box"><div class="stat-value">${result.length}</div><div class="stat-label">Length</div></div>
@@ -206,14 +216,14 @@ const PSA_Analyzer = {
         <div class="stat-box"><div class="stat-value">${result.crackTime}</div><div class="stat-label">Est. Crack Time</div></div>
         <div class="stat-box"><div class="stat-value">${result.linkLabel}</div><div class="stat-label">Link Speed Risk</div></div>
         <div class="stat-box"><div class="stat-value">${result.isCommon ? 'YES' : 'NO'}</div><div class="stat-label">Common List</div></div>
-        <div class="stat-box"><div class="stat-value">${result.breached > 0 ? result.breached.toLocaleString() : '0'}</div><div class="stat-label">Breaches Found</div></div>
+        <div class="stat-box"><div class="stat-value">${result.breachCheckUnavailable ? '—' : result.breached.toLocaleString()}</div><div class="stat-label">Breaches Found</div></div>
       </div>
 
       <div class="chart-container">
         <h3><span style="color:var(--matrix-green)">▼</span> Character Analysis</h3>
         <div class="criteria-list">
-          ${['length8','lowercase','uppercase','numbers','special','noRepeat','noSequential'].map(k => {
-            const labels = { length8:'8+ characters', lowercase:'Lowercase (a-z)', uppercase:'Uppercase (A-Z)', numbers:'Numbers (0-9)', special:'Special symbols', noRepeat:'No repeats', noSequential:'No sequences' };
+          ${['length8','length12','lowercase','uppercase','numbers','special','noRepeat','noSequential'].map(k => {
+            const labels = { length8:'8+ characters', length12:'12+ characters', lowercase:'Lowercase (a-z)', uppercase:'Uppercase (A-Z)', numbers:'Numbers (0-9)', special:'Special symbols', noRepeat:'No repeats', noSequential:'No sequences' };
             return `<li class="${result.checks[k] ? 'pass' : 'fail'}"><span class="crit-icon">${result.checks[k] ? '&#10003;' : '&#10007;'}</span> ${labels[k]}</li>`;
           }).join('')}
         </div>
@@ -244,11 +254,19 @@ const PSA_Analyzer = {
     const N = '23456789';
     const S = '!@#$%^&*()-_=+[]{}<>?';
     const pool = L + U + N + S;
-    let pw = '';
-    for (let i = 0; i < 16; i++) pw += pool[Math.floor(Math.random() * pool.length)];
-    pw = pw
-      .replace(/./, c => U[Math.floor(Math.random() * U.length)])
-      .replace(/.$/, c => N[Math.floor(Math.random() * N.length)]);
+    const randomIndex = max => {
+      const limit = 0x100000000 - (0x100000000 % max);
+      const sample = new Uint32Array(1);
+      do { crypto.getRandomValues(sample); } while (sample[0] >= limit);
+      return sample[0] % max;
+    };
+    const chars = [L, U, N, S].map(set => set[randomIndex(set.length)]);
+    while (chars.length < 16) chars.push(pool[randomIndex(pool.length)]);
+    for (let i = chars.length - 1; i > 0; i--) {
+      const j = randomIndex(i + 1);
+      [chars[i], chars[j]] = [chars[j], chars[i]];
+    }
+    const pw = chars.join('');
     const box = document.getElementById('generated-password');
     const val = document.getElementById('generated-pw-value');
     box.style.display = 'block';
@@ -258,7 +276,13 @@ const PSA_Analyzer = {
 
   copyGenerated() {
     if (!this._generated) return;
-    navigator.clipboard.writeText(this._generated).then(() => PSA.toast('Copied to clipboard', 'success'));
+    if (!navigator.clipboard?.writeText) {
+      PSA.toast('Clipboard is unavailable here. Select and copy the password manually.', 'error');
+      return;
+    }
+    navigator.clipboard.writeText(this._generated)
+      .then(() => PSA.toast('Copied to clipboard', 'success'))
+      .catch(() => PSA.toast('Copy failed. Select and copy the password manually.', 'error'));
   },
 
   useGenerated() {
@@ -289,7 +313,7 @@ const PSA_Analyzer = {
         is_common: result.isCommon ? 1 : 0,
         breached_count: result.breached,
         entropy: result.entropy,
-        analysis_notes: result.recommendations.map(r => r.title).join('; ')
+        analysis_notes: result.recommendations.map(r => r.title).concat(result.breachCheckUnavailable ? ['Breach lookup unavailable'] : []).join('; ')
       }
     }).then(res => {
       if (res.success) PSA.toast('Analysis saved to history', 'success');

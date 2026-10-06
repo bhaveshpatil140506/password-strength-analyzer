@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
@@ -31,13 +31,14 @@
       <h2><span class="blink">▌</span> PASSWORD INPUT &amp; STRENGTH ANALYSIS</h2>
 
       <div class="alert alert-info show" style="display:block;">
-        Your password is <b>never transmitted or stored</b> for analysis when running locally. Backend persistence stores only the masked placeholder.
+        Analysis runs in your browser. The breach check sends only the first five characters of the password's SHA-1 hash to Have I Been Pwned; your password is not sent. Saving to history stores a masked placeholder and analysis details.
       </div>
+      <p class="muted" style="font-size:.82rem; margin:12px 0 0;">Strength and crack-time results are estimates. Unique passwords, a password manager, and multi-factor authentication help protect accounts beyond what a score can measure.</p>
 
       <div class="form-group" style="margin-top:20px;">
         <label for="password" style="font-size:.95rem;">ENTER PASSWORD TO AUDIT</label>
         <div class="input-wrapper">
-          <input type="password" id="password" placeholder="Type a password to analyze..." autocomplete="off" style="font-size:1.1rem; letter-spacing:2px;">
+          <input type="password" id="password" placeholder="Type any password to analyze..." autocomplete="off" style="font-size:1.1rem; letter-spacing:2px;">
           <button type="button" class="toggle-password" data-target="password">●</button>
         </div>
         <div class="strength-meter" style="height:14px;"><div class="strength-fill" id="password-meter"></div></div>
@@ -75,7 +76,7 @@
     </div>
   </div>
 
-  <footer class="footer"><p>PASSWORD STRENGTH ANALYZER — ANALYSIS NODE</p></footer>
+  <footer class="footer"><p>PASSGUARD — ANALYSIS NODE</p></footer>
 
 <script src="js/common.js"></script>
 <script src="js/validations.js"></script>

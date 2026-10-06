@@ -11,8 +11,11 @@ require_once __DIR__ . '/../config/database.php';
 $input  = jsonBody();
 $action = $input['action'] ?? $_GET['action'] ?? 'list';
 $userId = (int) ($input['user_id'] ?? 0);
+$authenticatedId = authenticatedUserId();
 
-if ($userId <= 0) {
+if ($userId <= 0 || $userId !== $authenticatedId) {
+    http_response_code($userId <= 0 ? 400 : 403);
+    if ($userId > 0) respond(false, 'FORBIDDEN');
     respond(false, 'USER_ID_REQUIRED');
 }
 
@@ -48,24 +51,41 @@ switch ($action) {
         }
 
         // ---------- SAVE ----------
-        $fields = [
-            'password_placeholder', 'strength_score', 'strength_label', 'length',
-            'has_uppercase', 'has_lowercase', 'has_numbers', 'has_special',
-            'character_count', 'link_speed', 'estimated_crack_time',
-            'is_common', 'breached_count', 'entropy', 'analysis_notes',
-        ];
+        // The frontend sends analysis fields in a `result` object, matching
+        // the Django API. Accept that contract while retaining flat payload
+        // compatibility for older callers.
+        $result = isset($input['result']) && is_array($input['result'])
+            ? $input['result']
+            : $input;
 
-        $clean = [];
-        foreach ($fields as $f) {
-            $clean[$f] = $input[$f] ?? null;
+        if (empty($result['password_placeholder'])) {
+            respond(false, 'RESULT_DATA_REQUIRED');
         }
+
+        $clean = [
+            'password_placeholder' => $result['password_placeholder'] ?? $result['placeholder'] ?? null,
+            'strength_score' => $result['strength_score'] ?? $result['score'] ?? null,
+            'strength_label' => $result['strength_label'] ?? $result['label'] ?? null,
+            'length' => $result['length'] ?? null,
+            'has_uppercase' => $result['has_uppercase'] ?? 0,
+            'has_lowercase' => $result['has_lowercase'] ?? 0,
+            'has_numbers' => $result['has_numbers'] ?? 0,
+            'has_special' => $result['has_special'] ?? 0,
+            'character_count' => $result['character_count'] ?? $result['entropy'] ?? 0,
+            'link_speed' => $result['link_speed'] ?? $result['linkLabel'] ?? '',
+            'estimated_crack_time' => $result['estimated_crack_time'] ?? $result['crackTime'] ?? '',
+            'is_common' => $result['is_common'] ?? $result['isCommon'] ?? 0,
+            'breached_count' => $result['breached_count'] ?? $result['breached'] ?? 0,
+            'entropy' => $result['entropy'] ?? 0,
+            'analysis_notes' => $result['analysis_notes'] ?? '',
+        ];
 
         $db->prepare(
             'INSERT INTO analyzed_passwords
              (user_id, password_placeholder, strength_score, strength_label, length,
               has_uppercase, has_lowercase, has_numbers, has_special, character_count,
-              link_speed, estimated_crack_time, is_common, breached_count, entropy, analysis_notes)
-             VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)'
+              link_speed, estimated_crack_time, is_common, breached_count, entropy, analysis_notes, analyzed_at)
+             VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,UTC_TIMESTAMP())'
         )->execute([
             $userId,
             (string) $clean['password_placeholder'],

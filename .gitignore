@@ -23,3 +23,6 @@ Desktop.ini
 
 # Tooling (downloaded, not part of the app)
 tools/
+
+# Generated screenshots
+screenshots/

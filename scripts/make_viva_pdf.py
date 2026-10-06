@@ -12,6 +12,8 @@ from reportlab.platypus import (Paragraph, SimpleDocTemplate, Spacer,
 
 OUT = os.path.join(r'C:\Users\bhave\OneDrive\Desktop',
                    'Viva_Prep_Questions_Answers.pdf')
+INVIGILATOR_OUT = os.path.join(r'C:\Users\bhave\OneDrive\Desktop',
+                               'Invigilator_Questions_and_Answers.pdf')
 
 ACCENT = colors.HexColor('#0a7d32')
 DARK = colors.HexColor('#14341f')
@@ -47,9 +49,10 @@ SECTIONS = [
     ('1. PROJECT ABSTRACT (FOR REPORT)', [
         ('One-paragraph abstract',
          'The Password Strength Analyzer is a full-stack web application that evaluates '
-         'the security of user-chosen passwords. It assigns a strength score from 0 to 10 '
-         'based on entropy (length x log2 of the character pool) and eight complexity '
-         'checks, estimates password crack time at ten billion guesses per second, and '
+         'user-entered passwords with an eight-check strength score, a separate entropy '
+         'estimate, and an estimated crack time at ten billion guesses per second. The '
+         'analyzer currently accepts passwords from 4 to 8 characters, so its maximum '
+         'possible checklist score is 7 because the 12-character check cannot pass. It '
          'flags weak or commonly used credentials by comparing blind SHA-256 hashes, '
          'further supported by HaveIBeenPwned k-anonymity breach lookup. The system '
          'provides user registration and login with bcrypt-hashed credentials and '
@@ -66,9 +69,9 @@ SECTIONS = [
         ('Spoken intro',
          'Good morning, Sir/Ma\'am. My project is a Password Strength Analyzer - a web '
          'application that audits how secure a password is. A user registers and logs in '
-         'with validations such as bcrypt hashing and brute-force lockout, then types any '
-         'password into the analyzer. It returns a score out of 10, its entropy, and an '
-         'estimated crack time - for example, how many centuries it would take to guess. '
+         'with a bcrypt-based password hash and brute-force lockout, then types a 4-to-8 '
+         'character password into the analyzer. It returns a checklist score, its entropy, '
+         'and an estimated crack time based on a fixed guessing-speed assumption. '
          'It also detects common passwords such as "password" or "123456" using blind '
          'hashing, so the server never even sees the plaintext, and checks against the '
          'HaveIBeenPwned breach database. Every analysis is saved into a history that '
@@ -81,7 +84,7 @@ SECTIONS = [
     ('3. PROJECT OVERVIEW', [
         ('Explain your project in 2 minutes.',
          'It is a cybersecurity web application that audits passwords. It scores password '
-         'strength on a 0-10 scale, estimates entropy and crack time, detects common and '
+         'strength using an eight-check score, estimates entropy and crack time, detects common and '
          'breached passwords, gives personalized security recommendations, stores a masked '
          'password history, generates printable reports, and provides an admin dashboard '
          'with user management and an audit log. Frontend is HTML/CSS/JS; backends are '
@@ -94,24 +97,26 @@ SECTIONS = [
     ]),
     ('4. STRENGTH ANALYSIS LOGIC', [
         ('How do you calculate password strength?',
-         'Two components: (1) Shannon entropy = length x log2(character pool size), and '
-         '(2) an 8-point checklist - length >= 8, length >= 12, lowercase, uppercase, '
-         'digits, symbols, no repeated characters, and no sequential patterns. The score '
-         '0-10 maps to labels: WEAK, FAIR, GOOD, STRONG, EXCELLENT.'),
+         'The displayed score counts eight checks: length >= 8, length >= 12, lowercase, '
+         'uppercase, digits, symbols, no triple repeated character, and no recognized '
+         'sequential pattern. Scores 0-2 are WEAK, 3-4 FAIR, 5-6 STRONG, and 7-8 '
+         'EXCELLENT. Entropy is calculated separately as length x log2(character pool). '
+         'Because the current input limit is 8, the 12-character check cannot pass and '
+         'the maximum score is 7.'),
         ('What is "estimated crack time"?',
          'The number of guesses needed divided by a hypothetical 10 billion guesses per '
          'second, presented as a human label such as "180 centuries". When the search '
          'space is too large it displays "Safe for decades".'),
         ('Which passwords does registration reject?',
-         'Passwords under 8 characters, passwords using fewer than 3 character classes '
-         '(lowercase, uppercase, digits, symbols), passwords with triple repeats such as '
-         '"aaa", passwords with sequential patterns such as "123" or "abc", and any '
-         'password found in the common passwords list.'),
+         'Registration requires a non-empty password of at most 8 characters and rejects '
+         'passwords found in the common-password list. Sequential patterns are not '
+         'blocked, although they lose a point in the analyzer checklist.'),
     ]),
     ('5. SECURITY - IMPLEMENTATION', [
         ('Is the actual password ever stored?',
-         'No. Only a masked placeholder such as "Tr********3" is stored in the history '
-         'table. For login verification only the bcrypt (PBKDF2) hash is stored.'),
+         'The analysis history stores a masked placeholder and analysis results, not the '
+         'entered plaintext. Account passwords are stored as bcrypt-based hashes; the '
+         'application verifies a login against the hash.'),
         ('Why bcrypt and not MD5 or plain SHA-256 for passwords?',
          'bcrypt is deliberately slow and automatically salted, which resists brute-force '
          'and rainbow-table attacks. MD5 is fast and cryptographically broken. Fast '
@@ -210,9 +215,9 @@ SECTIONS = [
          'Create an account and intentionally try the bad password "123456" - show how '
          'it gets rejected as too weak/common, then register with a strong password.'),
         ('Analyze',
-         'Type "Tr0ub4dor&3" - it jumps to 7/10 with roughly 72 bits of entropy and an '
-         'estimated crack time far beyond centuries. The meter, checklist and analytics '
-         'react instantly.'),
+         'Type an 8-character sample such as "A7#vK2!m". The meter and checklist update '
+         'instantly. Explain that the score is a simple checklist, while entropy and the '
+         'crack-time estimate are separate heuristic outputs.'),
         ('Common check',
          'Type "password" - the top-common list and breach lookup flag it red, proving '
          'the system never suggests or accepts such weak credentials.'),
@@ -225,6 +230,63 @@ SECTIONS = [
          'Log in as admin - user list with ban/delete, weekly activity chart and the '
          'live audit log of every recorded action.'),
     ]),
+    ('10. LIKELY INVIGILATOR QUESTIONS AND MODEL ANSWERS', [
+        ('What problem does your project solve?',
+         'It gives users a quick assessment of password patterns, common-password risk, '
+         'possible breach exposure, and password reuse risk awareness, with recommendations '
+         'and a private analysis history.'),
+        ('How is the password strength score calculated?',
+         'The analyzer awards one point for each of eight checks: length of at least 8, '
+         'length of at least 12, lowercase, uppercase, digits, symbols, no character '
+         'repeated three times in a row, and no recognized sequential pattern.'),
+        ('What do Weak, Fair, Strong, and Excellent mean?',
+         'Weak is 0-2 checks, Fair is 3-4, Strong is 5-6, and Excellent is 7-8. With the '
+         'current eight-character maximum, the 12-character check cannot pass, so the '
+         'maximum reachable score is 7.'),
+        ('Why does password length matter?',
+         'A longer password generally creates more possible combinations and increases '
+         'the search space. The analyzer currently limits input to 8 characters, which '
+         'is not a recommended limit for real account security.'),
+        ('How does the system check common or breached passwords?',
+         'It checks known common-password entries. For breach lookup, it uses the Have I '
+         'Been Pwned range method: it sends only the first five characters of the SHA-1 '
+         'hash and compares the returned suffixes locally.'),
+        ('Is the entered password stored in the database?',
+         'No plaintext analysis password is stored. History stores a masked placeholder '
+         'and analysis results. Account credentials are stored as bcrypt-based hashes.'),
+        ('How are passwords protected during login?',
+         'The server compares the submitted password with its stored bcrypt-based hash. '
+         'The application also records failed attempts and applies a temporary lockout '
+         'after repeated failures.'),
+        ('What happens if a password is longer than eight characters?',
+         'The interface limits typing to eight characters, and server-side validation '
+         'rejects longer passwords so the rule cannot be bypassed by skipping the form.'),
+        ('Are sequential passwords such as abc123 blocked?',
+         'No. They can be analyzed, but a recognized sequence fails the no-sequential '
+         'check and lowers the score. A common-password match can also raise a separate warning.'),
+        ('What is entropy in your project?',
+         'Entropy is an estimate based on password length and the character categories '
+         'present. The implementation calculates length multiplied by log base 2 of the '
+         'estimated character pool.'),
+        ('What assumptions affect the crack-time estimate?',
+         'It converts estimated entropy to a search-space size and assumes 10 billion '
+         'guesses per second. It is illustrative, not a prediction of a specific attacker '
+         'or hardware setup.'),
+        ('Which technologies did you use?',
+         'The frontend uses HTML, CSS, and JavaScript. The project includes Django and '
+         'PHP APIs and uses MySQL for persistent data.'),
+        ('How do you prevent users from seeing another user’s analysis history?',
+         'The API authenticates the session token, identifies the logged-in user, and '
+         'checks that the requested history belongs to that user before returning it.'),
+        ('What are the limitations of the scoring method?',
+         'It is a small heuristic checklist, not a guarantee of security. It can reward '
+         'character variety without understanding context or real-world attacker behavior. '
+         'The eight-character cap is also too short for strong real-world passwords.'),
+        ('What would you improve next?',
+         'I would allow longer passphrases, use a better calibrated strength estimator '
+         'that recognizes common patterns, and make crack-time estimates explicit about '
+         'online versus offline attack conditions.'),
+    ]),
 ]
 
 story = []
@@ -236,18 +298,6 @@ for name, items in SECTIONS:
     for qtext, atext in items:
         story.extend(qa(qtext, atext))
 
-story.append(Spacer(1, 10))
-foot = Table([[Paragraph(esc('Default logins:  admin / Admin@123   |   demo / Demo@123'
-                             '   |   phpMyAdmin: root / (empty)'), a_style)]],
-             colWidths=[176 * mm])
-foot.setStyle(TableStyle([
-    ('BACKGROUND', (0, 0), (-1, -1), colors.HexColor('#eef7f1')),
-    ('BOX', (0, 0), (-1, -1), 0.75, ACCENT),
-    ('TOPPADDING', (0, 0), (-1, -1), 6),
-    ('BOTTOMPADDING', (0, 0), (-1, -1), 6),
-]))
-story.append(foot)
-
 doc = SimpleDocTemplate(OUT, pagesize=A4,
                         leftMargin=17 * mm, rightMargin=17 * mm,
                         topMargin=15 * mm, bottomMargin=15 * mm,
@@ -255,3 +305,19 @@ doc = SimpleDocTemplate(OUT, pagesize=A4,
                         author='Password Strength Analyzer Project')
 doc.build(story)
 print('PDF written:', OUT)
+
+qa_story = [
+    Paragraph('Password Strength Analyzer', title_style),
+    Paragraph('Invigilator Questions with Model Answers', sub_style),
+    Paragraph('15 Questions', section_style),
+]
+for qtext, atext in SECTIONS[-1][1]:
+    qa_story.extend(qa(qtext, atext))
+
+qa_doc = SimpleDocTemplate(INVIGILATOR_OUT, pagesize=A4,
+                           leftMargin=17 * mm, rightMargin=17 * mm,
+                           topMargin=15 * mm, bottomMargin=15 * mm,
+                           title='Password Strength Analyzer - Invigilator Q&A',
+                           author='Password Strength Analyzer Project')
+qa_doc.build(qa_story)
+print('PDF written:', INVIGILATOR_OUT)

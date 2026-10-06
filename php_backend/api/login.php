@@ -10,11 +10,14 @@
 require_once __DIR__ . '/../config/database.php';
 
 $input  = jsonBody();
-$uname  = trim($input['username'] ?? '');
-$pass   = $input['password'] ?? '';
+$uname  = is_string($input['username'] ?? null) ? trim($input['username']) : '';
+$pass   = is_string($input['password'] ?? null) ? $input['password'] : '';
 
 if ($uname === '' || $pass === '') {
     respond(false, 'Username and password are required.');
+}
+if (mb_strlen($pass) > 8) {
+    respond(false, 'Password must be no more than 8 characters.');
 }
 
 $lockoutWindow = time() - 900; // 15 minutes
@@ -32,11 +35,11 @@ $st = db()->prepare('SELECT * FROM users WHERE username = ? OR email = ? LIMIT 1
 $st->execute([$uname, $uname]);
 $user = $st->fetch();
 
-$loginOk = $user && password_verify($pass, $user['password_hash']) && (int) $user['is_active'] === 1;
+$loginOk = $user && appPasswordVerify($pass, $user['password_hash']) && (int) $user['is_active'] === 1;
 
 // ---------- AUDIT ----------
 db()->prepare(
-    'INSERT INTO login_attempts (user_id, username, ip_address, user_agent, success) VALUES (?, ?, ?, ?, ?)'
+    'INSERT INTO login_attempts (user_id, username, ip_address, user_agent, success, attempted_at) VALUES (?, ?, ?, ?, ?, UTC_TIMESTAMP())'
 )->execute([
     $user ? (int) $user['id'] : null,
     $uname,
@@ -54,6 +57,12 @@ if (!$loginOk) {
 // ---------- SUCCESS ----------
 db()->prepare('UPDATE users SET last_login = NOW() WHERE id = ?')->execute([$user['id']]);
 
+$token = bin2hex(random_bytes(32));
+$expiresAt = gmdate('Y-m-d H:i:s', time() + 3600 * 4);
+db()->exec('DELETE FROM api_sessions WHERE expires_at <= UTC_TIMESTAMP()');
+db()->prepare('INSERT INTO api_sessions (user_id, token_hash, expires_at, created_at) VALUES (?, ?, ?, UTC_TIMESTAMP())')
+    ->execute([(int) $user['id'], hash('sha256', $token), $expiresAt]);
+
 $session = [
     'user' => [
         'id'         => (int) $user['id'],
@@ -63,11 +72,11 @@ $session = [
     ],
     'is_admin'   => (bool) $user['is_admin'],
     'logged_in'  => true,
-    'token'      => bin2hex(random_bytes(24)),
-    'expires_at' => date('Y-m-d H:i:s', time() + 3600 * 4),
+    'token'      => $token,
+    'expires_at' => $expiresAt,
 ];
 
-db()->prepare('INSERT INTO admin_activity_log (admin_id, action, details) VALUES (?, ?, ?)')
+db()->prepare('INSERT INTO admin_activity_log (admin_id, action, details, created_at) VALUES (?, ?, ?, UTC_TIMESTAMP())')
     ->execute([null, 'USER_LOGIN', "{$user['username']} logged in from " . clientIp()]);
 
 respond(true, 'AUTHENTICATION_SUCCESS', ['session' => $session]);

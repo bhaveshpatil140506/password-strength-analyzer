@@ -27,7 +27,7 @@ try {
 
 Write-Host ''
 Write-Host 'Django server:  http://127.0.0.1:8000' -ForegroundColor Green
-Write-Host 'Logins:         admin / Admin@123  |  demo / Demo@123' -ForegroundColor Green
+Write-Host 'Use credentials printed by the seed command above.' -ForegroundColor Green
 Write-Host 'Press Ctrl+C to stop.' -ForegroundColor DarkGray
 Write-Host ''
 

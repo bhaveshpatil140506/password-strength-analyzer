@@ -8,13 +8,13 @@ declare(strict_types=1);
 mb_internal_encoding('UTF-8');
 date_default_timezone_set('UTC');
 
-const DB_HOST = '127.0.0.1';
-const DB_NAME = 'password_analyzer';
-const DB_USER = 'root';
-const DB_PASS = '';
+define('DB_HOST', getenv('PSA_DB_HOST') ?: '127.0.0.1');
+define('DB_NAME', getenv('PSA_DB_NAME') ?: 'password_analyzer');
+define('DB_USER', getenv('PSA_DB_USER') ?: 'root');
+define('DB_PASS', getenv('PSA_DB_PASSWORD') ?: '');
 
-const APP_NAME  = 'PASSWORD_STRENGTH_ANALYZER';
-const APP_DEBUG = true;   // false in production
+define('APP_NAME', 'PASSWORD_STRENGTH_ANALYZER');
+define('APP_DEBUG', getenv('PSA_DEBUG') === '1');
 
 /** Global PDO singleton */
 function db(): PDO
@@ -50,7 +50,7 @@ function apiHeaders(): void
     }
     header('Access-Control-Allow-Origin: *');
     header('Access-Control-Allow-Methods: GET, POST, OPTIONS');
-    header('Access-Control-Allow-Headers: Content-Type');
+    header('Access-Control-Allow-Headers: Content-Type, Authorization');
     header('Content-Type: application/json; charset=utf-8');
     if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
         http_response_code(204);
@@ -85,6 +85,43 @@ function isAdmin(int $uid): bool
     $st = db()->prepare('SELECT is_admin FROM users WHERE id = ?');
     $st->execute([$uid]);
     return (bool) ($st->fetchColumn() ?: 0);
+}
+
+/** Hash the SHA-256 pre-digest with bcrypt to avoid bcrypt's 72-byte input cap. */
+function appPasswordHash(string $password): string
+{
+    $material = base64_encode(hash('sha256', $password, true));
+    return password_hash($material, PASSWORD_BCRYPT);
+}
+
+/** Accept current pre-digested hashes and existing direct bcrypt hashes. */
+function appPasswordVerify(string $password, string $encoded): bool
+{
+    $material = base64_encode(hash('sha256', $password, true));
+    return password_verify($material, $encoded) || password_verify($password, $encoded);
+}
+
+/** Resolve a bearer token to an active database user. */
+function authenticatedUserId(): int
+{
+    $headers = function_exists('getallheaders') ? getallheaders() : [];
+    $authorization = $headers['Authorization'] ?? $headers['authorization'] ?? ($_SERVER['HTTP_AUTHORIZATION'] ?? '');
+    if (!preg_match('/^Bearer\s+([a-f0-9]{64})$/i', trim($authorization), $match)) {
+        http_response_code(401);
+        respond(false, 'AUTHENTICATION_REQUIRED');
+    }
+
+    $st = db()->prepare(
+        'SELECT s.user_id FROM api_sessions s JOIN users u ON u.id = s.user_id
+         WHERE s.token_hash = ? AND s.expires_at > UTC_TIMESTAMP() AND u.is_active = 1 LIMIT 1'
+    );
+    $st->execute([hash('sha256', strtolower($match[1]))]);
+    $uid = (int) ($st->fetchColumn() ?: 0);
+    if (!$uid) {
+        http_response_code(401);
+        respond(false, 'SESSION_EXPIRED_OR_INVALID');
+    }
+    return $uid;
 }
 
 /** Boot API */

@@ -6,15 +6,20 @@ Uses MySQL via phpMyAdmin (same database as the PHP backend).
 
 import os
 from pathlib import Path
+from django.core.exceptions import ImproperlyConfigured
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 # Point at the shared frontend static assets
 FRONTEND_DIR = Path(BASE_DIR).parent / 'frontend'
 
-SECRET_KEY = 'psa-django-dev-secret-key-change-in-production'
-DEBUG = True
-ALLOWED_HOSTS = ['*']
+SECRET_KEY = os.environ.get('PSA_DJANGO_SECRET_KEY', 'local-only-change-before-deploy-psa-key')
+DEBUG = os.environ.get('PSA_DEBUG', '1') == '1'
+ALLOWED_HOSTS = [host.strip() for host in os.environ.get(
+    'PSA_ALLOWED_HOSTS', 'localhost,127.0.0.1,[::1]',
+).split(',') if host.strip()]
+if not DEBUG and not os.environ.get('PSA_DJANGO_SECRET_KEY'):
+    raise ImproperlyConfigured('Set PSA_DJANGO_SECRET_KEY before running with PSA_DEBUG=0.')
 
 
 # ---------- Application definition ----------
@@ -25,7 +30,6 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-    'rest_framework',
     'analyzer',
 ]
 
@@ -64,11 +68,11 @@ WSGI_APPLICATION = 'config.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.mysql',
-        'NAME': 'password_analyzer',
-        'USER': 'root',
-        'PASSWORD': '',
-        'HOST': '127.0.0.1',
-        'PORT': '3306',
+        'NAME': os.environ.get('PSA_DB_NAME', 'password_analyzer'),
+        'USER': os.environ.get('PSA_DB_USER', 'root'),
+        'PASSWORD': os.environ.get('PSA_DB_PASSWORD', ''),
+        'HOST': os.environ.get('PSA_DB_HOST', '127.0.0.1'),
+        'PORT': os.environ.get('PSA_DB_PORT', '3306'),
         'OPTIONS': {
             'charset': 'utf8mb4',
             'init_command': "SET sql_mode='STRICT_TRANS_TABLES'",
@@ -103,16 +107,5 @@ STATICFILES_DIRS = [
 # Allow loading of the HTML pages themselves
 STATIC_ROOT = os.path.join(BASE_DIR, 'static_collected')
 
-
-# ---------- DRF ----------
-REST_FRAMEWORK = {
-    'DEFAULT_AUTHENTICATION_CLASSES': [],
-    'DEFAULT_PERMISSION_CLASSES': [
-        'rest_framework.permissions.AllowAny',
-    ],
-    'DEFAULT_RENDERER_CLASSES': [
-        'rest_framework.renderers.JSONRenderer',
-    ],
-}
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'

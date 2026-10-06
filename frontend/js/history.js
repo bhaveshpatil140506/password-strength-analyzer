@@ -1,5 +1,5 @@
 /* ============================================================
-   PASSWORD STRENGTH ANALYZER - PASSWORD HISTORY MODULE
+   PASSWORD STRENGTH ANALYZER - PASSWORD HISTORY
    ============================================================ */
 
 const PSA_History = {
@@ -14,7 +14,7 @@ const PSA_History = {
     try {
       const res = await PSA.api('history.php', 'POST', { user_id: PSA.session.user.id });
       const rows = res.success ? res.data : [];
-      countEl.textContent = `[ ${rows.length} RECORDS ]`;
+      if (countEl) countEl.textContent = `[ ${rows.length} ${rows.length === 1 ? 'RECORD' : 'RECORDS'} ]`;
 
       const render = rows.map(r => `
         <tr>
@@ -33,7 +33,7 @@ const PSA_History = {
           </td>
         </tr>`).join('');
 
-      const empty = `<tr><td colspan="10" class="empty-state">NO ANALYSES FOUND. RUN YOUR FIRST ANALYSIS.</td></tr>`;
+      const empty = `<tr><td colspan="10" class="empty-state">No analyses yet. Run your first check in the <a href="analyzer.html">password analyzer</a>.</td></tr>`;
       tbody.innerHTML = rows.length ? render : empty;
       if (tbodyAll) tbodyAll.innerHTML = rows.length ? render : empty;
 
@@ -46,12 +46,14 @@ const PSA_History = {
           </div>`).join('') || '<div class="log-line">NO DATA IN FEED</div>';
       }
     } catch {
-      tbody.innerHTML = `<tr><td colspan="10" class="empty-state">UNABLE TO REACH HISTORY API. CONNECTING TO DEMO DATA...</td></tr>`;
+      tbody.innerHTML = `<tr><td colspan="10" class="empty-state">History could not load. Check the server connection and refresh.</td></tr>`;
     }
   },
 
   async detail(id) {
-    const res = await PSA.api('history.php', 'POST', { action: 'detail', user_id: PSA.session.user.id, id });
+    let res;
+    try { res = await PSA.api('history.php', 'POST', { action: 'detail', user_id: PSA.session.user.id, id }); }
+    catch { PSA.toast('Could not load this analysis.', 'error'); return; }
     const modal = document.getElementById('detail-modal');
     if (!modal || !res.success) { PSA.toast('Detail unavailable', 'error'); return; }
     const d = res.data;
@@ -71,9 +73,11 @@ const PSA_History = {
 
   async deleteRow(id) {
     if (!confirm(`Delete analysis record #${id}?`)) return;
-    const res = await PSA.api('history.php', 'POST', { action: 'delete', user_id: PSA.session.user.id, id });
-    PSA.toast(res.message || 'Record deleted', res.success ? 'success' : 'error');
-    this.load();
+    try {
+      const res = await PSA.api('history.php', 'POST', { action: 'delete', user_id: PSA.session.user.id, id });
+      PSA.toast(res.success ? 'Analysis deleted.' : (res.message || 'Could not delete analysis.'), res.success ? 'success' : 'error');
+      if (res.success) this.load();
+    } catch { PSA.toast('Could not delete this analysis. Check the server connection.', 'error'); }
   },
 
   bind() {

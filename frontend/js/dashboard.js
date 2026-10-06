@@ -8,7 +8,7 @@ const PSA_Dashboard = {
     if (!PSA.session) return;
     try {
       const res = await PSA.api('admin.php', 'POST', { action: 'user_stats', user_id: PSA.session.user.id });
-      if (!res.success) return;
+      if (!res.success) throw new Error(res.message || 'Dashboard statistics unavailable');
 
       const s = res.data;
       const counters = {
@@ -22,19 +22,9 @@ const PSA_Dashboard = {
       document.getElementById('user-name-display').textContent = PSA.session.user.fullname || PSA.session.user.username;
       this.renderStreakBars(s);
     } catch (err) {
-      console.warn('Stats load failed, using demo mode', err);
-      this.demoMode();
+      PSA.toast('Could not load your dashboard. Check the server connection and retry.', 'error');
+      this.renderStreakBars({ weak: 0, medium: 0, strong: 0, excellent: 0 });
     }
-  },
-
-  demoMode() {
-    const counters = { total: 24, avg: '4.2', weak: 6, strong: 14, common: 3, breaches: 2 };
-    for (const [id, val] of Object.entries(counters)) {
-      const el = document.getElementById(`stat-${id}`);
-      if (el) this.animateCount(el, val);
-    }
-    document.getElementById('user-name-display').textContent = PSA.session.user.username;
-    this.renderStreakBars({ weak: 6, medium: 4, strong: 14 });
   },
 
   animateCount(el, target) {
@@ -49,36 +39,11 @@ const PSA_Dashboard = {
     requestAnimationFrame(step);
   },
 
-  /* Demo chart data when API unavailable */
-  demoChart() {
-    const canvas = document.getElementById('strength-chart');
-    if (!canvas) return;
-    const ctx = canvas.getContext('2d');
-    const data = [6, 4, 9, 5];
-    const total = data.reduce((a, b) => a + b, 0);
-    let start = -Math.PI / 2;
-    const colors = ['var(--toxic-red)', 'var(--warning-amber)', 'var(--matrix-green)', 'var(--neon-cyan)'];
-    data.forEach((v, i) => {
-      const angle = (v / total) * 2 * Math.PI;
-      ctx.beginPath();
-      ctx.moveTo(canvas.width / 2, canvas.height / 2);
-      ctx.arc(canvas.width / 2, canvas.height / 2, canvas.height / 2 - 12, start, start + angle);
-      ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue(colors[i]).trim();
-      ctx.fill();
-      start += angle;
-    });
-    ctx.strokeStyle = '#0a0f0d';
-    ctx.lineWidth = 4;
-    ctx.beginPath();
-    ctx.arc(canvas.width / 2, canvas.height / 2, canvas.height / 2 - 12, 0, 2 * Math.PI);
-    ctx.stroke();
-  },
-
   renderStreakBars(s) {
     const canvas = document.getElementById('strength-chart');
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
-    const data = [s.weak || 5, s.medium || 3, s.strong || 8, s.excellent || 4];
+    const data = [s.weak || 0, s.medium || 0, s.strong || 0, s.excellent || 0];
     const labels = ['WEAK', 'FAIR', 'STRONG', 'EXCEL'];
     const colors = ['#ff2d55', '#ffb020', '#00ff88', '#00f0ff'];
     const max = Math.max(...data, 1);
@@ -132,7 +97,12 @@ const PSA_Dashboard = {
     if (!tbody) return;
     try {
       const res = await PSA.api('history.php', 'POST', { action: 'list', user_id: PSA.session.user.id, limit: 5 });
-      const rows = res.success && res.data.length ? res.data : this.demoRows();
+      if (!res.success) throw new Error(res.message || 'History unavailable');
+      const rows = res.data || [];
+      if (!rows.length) {
+        tbody.innerHTML = '<tr><td colspan="6" class="empty-state">No analyses yet. Start with <a href="analyzer.html">your first password check</a>.</td></tr>';
+        return;
+      }
       tbody.innerHTML = rows.map(r => `
         <tr>
           <td class="terminal-text">${PSA.escapeHtml(r.password_placeholder || '')}</td>
@@ -143,16 +113,8 @@ const PSA_Dashboard = {
           <td class="muted">${PSA.fmtDate(r.analyzed_at)}</td>
         </tr>`).join('');
     } catch {
-      tbody.innerHTML = '<tr><td colspan="6" class="empty-state">UNABLE TO REACH HISTORY API. CONNECTING TO DEMO MODE...</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="6" class="empty-state">Your history could not load. Check the server connection and refresh.</td></tr>';
     }
-  },
-
-  demoRows() {
-    return [
-      { password_placeholder: 'P@ssw0rd!2024', strength_label: 'STRONG', strength_score: 6, estimated_crack_time: '3 centuries', is_common: 0, breached_count: 0, analyzed_at: '2026-09-18 08:42' },
-      { password_placeholder: 'iloveyou', strength_label: 'WEAK', strength_score: 1, estimated_crack_time: 'Instantly', is_common: 1, breached_count: 40, analyzed_at: '2026-09-18 08:10' },
-      { password_placeholder: 'Tr0ub4dor&3', strength_label: 'EXCELLENT', strength_score: 8, estimated_crack_time: '24 billion years', is_common: 0, breached_count: 0, analyzed_at: '2026-09-17 19:33' },
-    ];
   },
 
   bind() {

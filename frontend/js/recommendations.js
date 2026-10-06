@@ -1,5 +1,5 @@
 /* ============================================================
-   PASSWORD STRENGTH ANALYZER - RECOMMENDATIONS MODULE
+   PASSWORD STRENGTH ANALYZER - RECOMMENDATIONS
    ============================================================ */
 
 const PSA_Recommendations = {
@@ -7,10 +7,10 @@ const PSA_Recommendations = {
   masterTips() {
     return [
       { sev: 'critical', icon: '☠', title: 'Never reuse passwords', desc: 'Each account needs its own unique password. A breach on one service must not cascade to your email, banking, or social accounts.' },
-      { sev: 'high', icon: '⚔', title: 'Use a passphrase', desc: 'Combine 4-5 unrelated words with symbols and numbers, e.g. "Blue#Monkey$Train2026". Easy to remember, brutal to crack.' },
+      { sev: 'high', icon: '⚔', title: 'Use a long passphrase', desc: 'Choose several unrelated words. A password manager can also generate and store a unique random password for every account.' },
       { sev: 'high', icon: '🔐', title: 'Enable 2-Factor Authentication', desc: 'Even a stolen password becomes useless with 2FA. Prefer authenticator apps over SMS.' },
       { sev: 'medium', icon: '🗝', title: 'Use a password manager', desc: 'Generate and store strong random passwords per site. You only need to remember one master password.' },
-      { sev: 'medium', icon: '🔄', title: 'Rotate critical passwords regularly', desc: 'Changing passwords for email and banking every 90 days drastically shrinks your exposure window.' },
+      { sev: 'medium', icon: '🔄', title: 'Change compromised passwords promptly', desc: 'Change a password when it appears in a breach or you suspect someone else has access. Routine changes can encourage predictable variations.' },
       { sev: 'medium', icon: '🧹', title: 'Audit old accounts & data breaches', desc: 'Periodically check haveibeenpwned.com. Delete accounts you no longer use.' },
       { sev: 'low', icon: '🛡', title: 'Avoid personal data in passwords', desc: 'Birthdays, names, city names, and pet names are obtainable from social media. Keep them out of your passwords.' },
       { sev: 'low', icon: '💠', title: 'Beware of phishing', desc: 'Always verify the URL before entering credentials. Password managers help by auto-filling only on the real domain.' },

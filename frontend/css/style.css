@@ -42,6 +42,16 @@ body {
   position: relative;
 }
 
+:focus-visible {
+  outline: 2px solid var(--neon-cyan);
+  outline-offset: 3px;
+}
+
+button, input, select, textarea { font: inherit; }
+button { touch-action: manipulation; }
+input, select, textarea { min-width: 0; }
+canvas#strength-chart, canvas#report-chart, canvas#week-chart { max-width: 100%; height: auto; }
+
 /* ---------- Matrix falling code background ---------- */
 .matrix-bg {
   position: fixed;
@@ -1116,6 +1126,34 @@ body.logged-in .guest-only { display: none; }
   .nav-links a { font-size: 0.85rem; }
   .hero { padding: 40px 6%; min-height: auto; }
   .footer { font-size: 0.78rem; }
+}
+
+/* Keep dense dashboard and analyzer content usable on narrow screens. */
+@media (max-width: 480px) {
+  .navbar { padding: 10px 4%; gap: 8px; }
+  .brand { min-width: 0; gap: 7px; font-size: 0.92rem; letter-spacing: 1px; }
+  .brand-icon { font-size: 1.35rem; }
+  .section { padding: 32px 4%; }
+  .section-title { font-size: 1.12rem; overflow-wrap: anywhere; }
+  .hero h1 { font-size: clamp(1.45rem, 8vw, 2rem); overflow-wrap: anywhere; }
+  .stats-grid, .result-head, .result-stats { grid-template-columns: minmax(0, 1fr); }
+  .stat-box, .card, .analyzer-panel, .chart-container { min-width: 0; }
+  .form-container { width: auto; margin: 20px 4%; padding: 22px 16px; }
+  .form-control, input, select, textarea { max-width: 100%; }
+  .btn { max-width: 100%; white-space: normal; }
+  .table-wrapper { max-width: 100%; }
+  .table-wrapper table { min-width: 680px; }
+  .modal-content { width: calc(100vw - 24px); max-height: calc(100dvh - 24px); overflow-y: auto; }
+  input, select, textarea { font-size: 16px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }
 
 /* ---------- Scrollbar ---------- */

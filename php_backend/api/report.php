@@ -10,8 +10,11 @@ require_once __DIR__ . '/../config/database.php';
 $input  = jsonBody();
 $action = $input['action'] ?? $_GET['action'] ?? 'generate';
 $userId = (int) ($input['user_id'] ?? 0);
+$authenticatedId = authenticatedUserId();
 
-if ($userId <= 0) {
+if ($userId <= 0 || $userId !== $authenticatedId) {
+    http_response_code($userId <= 0 ? 400 : 403);
+    if ($userId > 0) respond(false, 'FORBIDDEN');
     respond(false, 'USER_ID_REQUIRED');
 }
 
@@ -49,16 +52,16 @@ function compileReport(int $userId): array
             'desc' => "{$common} analyzed values are on global breach lists. Change these immediately and never reuse them."];
     }
     if ($buckets['weak'] > 0) {
-        $recommendations[] = ['severity' => 'high', 'title' => 'Increase password complexity',
-            'desc' => "{$buckets['weak']} entries score weakly. Use 12+ chars mixing cases, digits and symbols."];
+        $recommendations[] = ['severity' => 'high', 'title' => 'Improve password strength',
+            'desc' => "{$buckets['weak']} entries score weakly. Choose longer, unique passphrases or manager-generated passwords."];
     }
     if ($breaches > 0) {
         $recommendations[] = ['severity' => 'high', 'title' => 'Stop using leaked passwords',
-            'desc' => "Your history contains passwords found in {$breaches} real-world breaches. Rotate now."];
+            'desc' => "Your history contains passwords found in {$breaches} real-world breaches. Change those passwords now."];
     }
     if ($avg >= 5) {
         $recommendations[] = ['severity' => 'low', 'title' => 'Maintain current hygiene',
-            'desc' => 'Average strength is solid. Keep rotating critical accounts every 90 days.'];
+            'desc' => 'Average strength is solid. Keep using unique passwords and change any password that is exposed or compromised.'];
     } else {
         $recommendations[] = ['severity' => 'medium', 'title' => 'Raise your average score',
             'desc' => "Your average is {$avg}/8. A passphrase strategy will lift this substantially."];
@@ -102,8 +105,8 @@ switch ($action) {
                 'INSERT INTO analyzed_passwords
                  (user_id, password_placeholder, strength_score, strength_label, length,
                   has_uppercase, has_lowercase, has_numbers, has_special, character_count,
-                  link_speed, estimated_crack_time, is_common, breached_count, entropy, analysis_notes)
-                 VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)'
+                  link_speed, estimated_crack_time, is_common, breached_count, entropy, analysis_notes, analyzed_at)
+                 VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,UTC_TIMESTAMP())'
             )->execute([
                 $userId,
                 $pwMask,
@@ -127,8 +130,8 @@ switch ($action) {
 
         $report = compileReport($userId);
         $db->prepare(
-            'INSERT INTO reports (user_id, report_type, report_format, total_analyses, avg_strength, weak_passwords, medium_passwords, strong_passwords, common_detected, recommendations_count, report_data)
-             VALUES (?,?,?,?,?,?,?,?,?,?,?)'
+            'INSERT INTO reports (user_id, report_type, report_format, total_analyses, avg_strength, weak_passwords, medium_passwords, strong_passwords, common_detected, recommendations_count, report_data, generated_at)
+             VALUES (?,?,?,?,?,?,?,?,?,?,?,UTC_TIMESTAMP())'
         )->execute([
             $userId,
             'single',

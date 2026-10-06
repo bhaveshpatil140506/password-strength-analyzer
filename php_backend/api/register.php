@@ -8,12 +8,12 @@ require_once __DIR__ . '/../config/database.php';
 
 $input = jsonBody();
 
-$fullName  = trim($input['fullname'] ?? '');
-$username  = trim($input['username'] ?? '');
-$email     = trim($input['email'] ?? '');
-$password  = $input['password'] ?? '';
-$secQ      = trim($input['security_question'] ?? '');
-$secA      = trim($input['security_answer'] ?? '');
+$fullName  = is_string($input['fullname'] ?? null) ? trim($input['fullname']) : '';
+$username  = is_string($input['username'] ?? null) ? trim($input['username']) : '';
+$email     = is_string($input['email'] ?? null) ? trim($input['email']) : '';
+$password  = is_string($input['password'] ?? null) ? $input['password'] : '';
+$secQ      = is_string($input['security_question'] ?? null) ? trim($input['security_question']) : '';
+$secA      = is_string($input['security_answer'] ?? null) ? trim($input['security_answer']) : '';
 
 $errors = [];
 
@@ -35,23 +35,10 @@ if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
 }
 
 $pwLen = mb_strlen($password);
-if ($pwLen < 8) {
-    $errors['password'] = 'Password must be at least 8 characters.';
-} else {
-    $complex = 0;
-    if (preg_match('/[a-z]/', $password)) $complex++;
-    if (preg_match('/[A-Z]/', $password)) $complex++;
-    if (preg_match('/[0-9]/', $password)) $complex++;
-    if (preg_match('/[^A-Za-z0-9]/', $password)) $complex++;
-    if ($complex < 3) {
-        $errors['password'] = 'Password needs 3+ of: lower, upper, numbers, symbols.';
-    }
-    if (preg_match('/(.)\1{2,}/', $password)) {
-        $errors['password'] = 'Password must not contain triple repeats.';
-    }
-    if (preg_match('/(abc|bcd|cde|def|efg|fgh|ghi|hij|ijk|jkl|klm|lmn|mno|nop|opq|pqr|qrs|rst|stu|tuv|uvw|vwx|wxy|xyz|012|123|234|345|456|567|678|789)/i', $password)) {
-        $errors['password'] = 'Password must not contain sequential patterns.';
-    }
+if ($pwLen === 0) {
+    $errors['password'] = 'Password is required.';
+} elseif ($pwLen > 8) {
+    $errors['password'] = 'Use no more than 8 characters.';
 }
 
 if ($secQ !== '' && $secA === '') {
@@ -77,19 +64,20 @@ if ($errors) {
 }
 
 // ---------- CREATE USER ----------
-$hash = password_hash($password, PASSWORD_DEFAULT);
-$answerHash = $secA !== '' ? password_hash($secA, PASSWORD_DEFAULT) : null;
+$hash = appPasswordHash($password);
+$answerHash = $secA !== '' ? appPasswordHash($secA) : null;
 
 try {
     $st = db()->prepare(
-        'INSERT INTO users (fullname, username, email, password_hash, security_question, security_answer_hash)
-         VALUES (?, ?, ?, ?, ?, ?)'
+        'INSERT INTO users (fullname, username, email, password_hash, security_question, security_answer_hash,
+                            is_admin, is_active, created_at, updated_at)
+         VALUES (?, ?, ?, ?, ?, ?, 0, 1, UTC_TIMESTAMP(), UTC_TIMESTAMP())'
     );
     $st->execute([$fullName, $username, $email, $hash, $secQ, $answerHash]);
 
     $userId = (int) db()->lastInsertId();
 
-    db()->prepare('INSERT INTO admin_activity_log (admin_id, action, details) VALUES (?, ?, ?)')
+    db()->prepare('INSERT INTO admin_activity_log (admin_id, action, details, created_at) VALUES (?, ?, ?, UTC_TIMESTAMP())')
         ->execute([null, 'USER_REGISTERED', "New user #{$userId} ({$username})"]);
 
     respond(true, 'ACCOUNT_CREATED', ['user_id' => $userId]);

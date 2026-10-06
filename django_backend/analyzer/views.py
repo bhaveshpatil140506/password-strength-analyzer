@@ -7,34 +7,36 @@ Two responsibilities:
 """
 
 import json
+import hashlib
 import re
+import secrets
 from pathlib import Path
 
 from django.conf import settings
-from django.contrib.auth.hashers import check_password, make_password
 from django.db.models import Count, Sum
 from django.http import HttpResponse, JsonResponse
 from django.utils import timezone
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
 
-from .models import (AdminActivityLog, AnalyzedPassword, CommonPassword,
-                     LoginAttempt, Report, User)
+from .models import (AdminActivityLog, AnalyzedPassword, ApiSession, CommonPassword,
+                     LoginAttempt, Report, User, hash_password, verify_app_password)
 from . import services
 
 USERNAME_RE = re.compile(r'^[a-zA-Z0-9_]+$')
 NAME_RE = re.compile(r"^[a-zA-Z\s.'-]+$")
-SEQUENCE_RE = re.compile(
-    r'(abc|bcd|cde|def|efg|fgh|ghi|hij|ijk|jkl|klm|lmn|mno|nop|opq|pqr|qrs|rst|stu|tuv|uvw|vwx|wxy|xyz|012|123|234|345|456|567|678|789)',
-    re.IGNORECASE,
-)
 
 
 def _body(request):
     try:
-        return json.loads(request.body or b'{}')
+        data = json.loads(request.body or b'{}')
+        return data if isinstance(data, dict) else {}
     except json.JSONDecodeError:
         return {}
+
+
+def _text(value):
+    return value if isinstance(value, str) else ''
 
 
 def _err(message, code=400):
@@ -47,6 +49,18 @@ def _ok(message='OK', data=None, **extra):
         payload['data'] = data
     payload.update(extra)
     return JsonResponse(payload)
+
+
+def _authenticated_user(request):
+    authorization = request.headers.get('Authorization', '')
+    match = re.fullmatch(r'Bearer ([a-f0-9]{64})', authorization, re.IGNORECASE)
+    if not match:
+        return None
+    token_hash = hashlib.sha256(match.group(1).lower().encode('ascii')).hexdigest()
+    session = ApiSession.objects.select_related('user').filter(
+        token_hash=token_hash, expires_at__gt=timezone.now(), user__is_active=True,
+    ).first()
+    return session.user if session else None
 
 
 # ---------------------------------------------------------------------------
@@ -135,12 +149,12 @@ def page_static(request, kind, filename):
 @require_http_methods(['POST'])
 def api_register(request):
     d = _body(request)
-    fullname = (d.get('fullname') or '').strip()
-    username = (d.get('username') or '').strip()
-    email = (d.get('email') or '').strip()
-    password = d.get('password') or ''
-    sec_q = (d.get('security_question') or '').strip()
-    sec_a = (d.get('security_answer') or '').strip()
+    fullname = _text(d.get('fullname')).strip()
+    username = _text(d.get('username')).strip()
+    email = _text(d.get('email')).strip()
+    password = _text(d.get('password'))
+    sec_q = _text(d.get('security_question')).strip()
+    sec_a = _text(d.get('security_answer')).strip()
 
     errors = {}
     if not (3 <= len(fullname) <= 80) or not NAME_RE.match(fullname):
@@ -149,23 +163,12 @@ def api_register(request):
         errors['username'] = 'Username: 4-30 chars, letters/numbers/underscores.'
     if not re.match(r'^[^@\s]+@[^@\s]+\.[A-Za-z]{2,}$', email):
         errors['email'] = 'A valid email is required.'
-    if len(password) < 8:
-        errors['password'] = 'Password must be at least 8 characters.'
-    else:
-        classes = sum([
-            bool(re.search(r'[a-z]', password)),
-            bool(re.search(r'[A-Z]', password)),
-            bool(re.search(r'[0-9]', password)),
-            bool(re.search(r'[^A-Za-z0-9]', password)),
-        ])
-        if classes < 3:
-            errors['password'] = 'Password needs 3+ of: lower, upper, numbers, symbols.'
-        if re.search(r'(.)\1{2,}', password):
-            errors['password'] = 'Password must not contain triple repeats.'
-        if SEQUENCE_RE.search(password):
-            errors['password'] = 'Password must not contain sequential patterns.'
-        if services.is_common(password):
-            errors['password'] = 'This is a widely-used common password. Choose something unique.'
+    if not password:
+        errors['password'] = 'Password is required.'
+    elif len(password) > 8:
+        errors['password'] = 'Use no more than 8 characters.'
+    if password and services.is_common(password):
+        errors['password'] = 'This is a widely-used common password. Choose something unique.'
     if sec_q and not sec_a:
         errors['security_answer'] = 'Security answer required when a question is set.'
 
@@ -179,9 +182,9 @@ def api_register(request):
         fullname=fullname,
         username=username,
         email=email.lower(),
-        password_hash=make_password(password),
+        password_hash=hash_password(password),
         security_question=sec_q or None,
-        security_answer_hash=make_password(sec_a) if sec_a else None,
+        security_answer_hash=hash_password(sec_a) if sec_a else None,
     )
     AdminActivityLog.objects.create(
         action='USER_REGISTERED', details=f'New user #{user.pk} ({username})',
@@ -193,10 +196,12 @@ def api_register(request):
 @require_http_methods(['POST'])
 def api_login(request):
     d = _body(request)
-    uname = (d.get('username') or '').strip()
-    password = d.get('password') or ''
+    uname = _text(d.get('username')).strip()
+    password = _text(d.get('password'))
     if not uname or not password:
         return _err('Username and password are required.')
+    if len(password) > 8:
+        return _err('Password must be no more than 8 characters.')
 
     since = timezone.now() - timezone.timedelta(minutes=15)
     recent_fails = LoginAttempt.objects.filter(
@@ -214,7 +219,7 @@ def api_login(request):
             LoginAttempt.objects.create(username=uname, ip_address=_ip(request), success=False)
             return _err('INVALID_CREDENTIALS')
 
-    ok = check_password(password, user.password_hash) and user.is_active
+    ok = verify_app_password(password, user.password_hash) and user.is_active
     LoginAttempt.objects.create(
         user=user if ok else None,
         username=uname,
@@ -230,15 +235,37 @@ def api_login(request):
     user.save(update_fields=['last_login'])
     AdminActivityLog.objects.create(action='USER_LOGIN', details=f'{user.username} logged in')
 
+    token = secrets.token_hex(32)
+    expires_at = timezone.now() + timezone.timedelta(hours=4)
+    ApiSession.objects.filter(expires_at__lte=timezone.now()).delete()
+    ApiSession.objects.create(
+        user=user,
+        token_hash=hashlib.sha256(token.encode('ascii')).hexdigest(),
+        expires_at=expires_at,
+    )
     session = {
         'user': {'id': user.pk, 'fullname': user.fullname,
                  'username': user.username, 'email': user.email},
         'is_admin': user.is_admin,
         'logged_in': True,
-        'token': __import__('secrets').token_hex(24),
-        'expires_at': (timezone.now() + timezone.timedelta(hours=4)).isoformat(),
+        'token': token,
+        'expires_at': expires_at.isoformat(),
     }
     return _ok('AUTHENTICATION_SUCCESS', session=session)
+
+
+@csrf_exempt
+@require_http_methods(['POST'])
+def api_session(request):
+    user = _authenticated_user(request)
+    if not user:
+        return _err('AUTHENTICATION_REQUIRED', 401)
+    authorization = request.headers.get('Authorization', '')
+    token = authorization[7:].lower()
+    ApiSession.objects.filter(
+        user=user, token_hash=hashlib.sha256(token.encode('ascii')).hexdigest(),
+    ).delete()
+    return _ok('SIGNED_OUT')
 
 
 def _ip(request):
@@ -252,9 +279,9 @@ def _ip(request):
 @require_http_methods(['POST'])
 def api_analyze(request):
     d = _body(request)
-    password = d.get('password') or ''
-    if len(password) < 4:
-        return _err('Minimum 4 characters for analysis.', 422)
+    password = _text(d.get('password'))
+    if not password:
+        return _err('PASSWORD_REQUIRED')
     result = services.inspect(password)
     result['recommendations'] = services.recommendations(result)
     return _ok('ANALYSIS_COMPLETE', data=result)
@@ -264,7 +291,7 @@ def api_analyze(request):
 @require_http_methods(['POST'])
 def api_common_check(request):
     d = _body(request)
-    password = d.get('password') or ''
+    password = _text(d.get('password'))
     if not password:
         return _err('PASSWORD_REQUIRED')
     local = services.is_common(password)
@@ -280,7 +307,15 @@ def api_common_check(request):
 def api_history(request):
     d = _body(request)
     action = d.get('action') or 'list'
-    user_id = int(d.get('user_id') or 0)
+    user = _authenticated_user(request)
+    if not user:
+        return _err('AUTHENTICATION_REQUIRED', 401)
+    try:
+        user_id = int(d.get('user_id') or 0)
+    except (TypeError, ValueError):
+        user_id = 0
+    if user_id != user.pk:
+        return _err('FORBIDDEN' if user_id else 'USER_ID_REQUIRED', 403 if user_id else 400)
     if not user_id:
         return _err('USER_ID_REQUIRED')
 
@@ -357,9 +392,50 @@ def _record(o):
 @require_http_methods(['POST'])
 def api_report(request):
     d = _body(request)
-    user_id = int(d.get('user_id') or 0)
+    user = _authenticated_user(request)
+    if not user:
+        return _err('AUTHENTICATION_REQUIRED', 401)
+    try:
+        user_id = int(d.get('user_id') or 0)
+    except (TypeError, ValueError):
+        user_id = 0
+    if user_id != user.pk:
+        return _err('FORBIDDEN' if user_id else 'USER_ID_REQUIRED', 403 if user_id else 400)
     if not user_id:
         return _err('USER_ID_REQUIRED')
+
+    action = d.get('action') or 'generate'
+    if action != 'full':
+        result = d.get('result_data')
+        if not isinstance(result, dict) or not result.get('placeholder'):
+            return _err('RESULT_DATA_REQUIRED')
+        placeholder = str(result.get('placeholder'))[:250]
+        exists = AnalyzedPassword.objects.filter(
+            user_id=user_id, password_placeholder=placeholder,
+        ).exists()
+        if not exists:
+            recs = result.get('recommendations') or []
+            notes = '; '.join(
+                str(item.get('title', '')) for item in recs if isinstance(item, dict)
+            ) if isinstance(recs, list) else ''
+            AnalyzedPassword.objects.create(
+                user_id=user_id,
+                password_placeholder=placeholder,
+                strength_score=int(result.get('score') or 0),
+                strength_label=str(result.get('label') or 'NONE')[:20],
+                length=int(result.get('length') or 0),
+                has_uppercase=bool(result.get('has_uppercase')),
+                has_lowercase=bool(result.get('has_lowercase')),
+                has_numbers=bool(result.get('has_numbers')),
+                has_special=bool(result.get('has_special')),
+                character_count=float(result.get('entropy') or 0),
+                link_speed=str(result.get('linkLabel') or '')[:30],
+                estimated_crack_time=str(result.get('crackTime') or '')[:60],
+                is_common=bool(result.get('isCommon')),
+                breached_count=int(result.get('breached') or 0),
+                entropy=float(result.get('entropy') or 0),
+                analysis_notes=notes,
+            )
 
     analyses = AnalyzedPassword.objects.filter(user_id=user_id)
     total = analyses.count()
@@ -383,11 +459,10 @@ def api_report(request):
         'recommendations': _report_recs(common, weak, breaches, total),
     }
 
-    action = d.get('action') or 'generate'
     if action == 'full':
         return _ok('OK', data=report)
 
-    Report.objects.create(
+    saved_report = Report.objects.create(
         user_id=user_id,
         report_type='single',
         report_format='json',
@@ -403,7 +478,7 @@ def api_report(request):
     AdminActivityLog.objects.create(
         admin_id=user_id, action='REPORT_GENERATED', details=f'Report for user #{user_id}',
     )
-    return _ok('REPORT_GENERATED', report_id=Report.objects.latest('id').pk, data=report)
+    return _ok('REPORT_GENERATED', report_id=saved_report.pk, data=report)
 
 
 def _report_recs(common, weak, breaches, total):
@@ -412,22 +487,23 @@ def _report_recs(common, weak, breaches, total):
         recs.append({'severity': 'critical', 'title': 'CRITICAL: Common passwords in use',
                      'desc': f'{common} analyzed values are on global breach lists.'})
     if weak:
-        recs.append({'severity': 'high', 'title': 'Increase password complexity',
-                     'desc': f'{weak} entries score weakly. Use 12+ chars with mixed classes.'})
+        recs.append({'severity': 'high', 'title': 'Improve password strength',
+                     'desc': f'{weak} entries score weakly. Choose longer, unique passphrases or manager-generated passwords.'})
     if breaches:
         recs.append({'severity': 'high', 'title': 'Stop using leaked passwords',
-                     'desc': f'Found in {breaches} real-world breaches. Rotate now.'})
+                     'desc': f'Found in {breaches} real-world breaches. Change those passwords now.'})
     recs.append({'severity': 'low', 'title': 'Maintain hygiene',
-                 'desc': 'Keep rotating critical accounts every 90 days.'})
+                 'desc': 'Use unique passwords and change them promptly if they are exposed or compromised.'})
     return recs
 
 
 # ---------------------------------------------------------------------------
 # ADMIN
 # ---------------------------------------------------------------------------
-def _require_admin(request, d):
-    admin_id = int(d.get('admin_id') or 0)
-    user = User.objects.filter(pk=admin_id, is_admin=True).first()
+def _require_admin(request):
+    user = _authenticated_user(request)
+    if user and not user.is_admin:
+        user = None
     if not user:
         return None, _err('FORBIDDEN :: admin privileges required.', 403)
     return user, None
@@ -441,7 +517,15 @@ def api_admin(request):
 
     # user_stats is allowed for any logged-in user
     if action == 'user_stats':
-        uid = int(d.get('user_id') or 0)
+        user = _authenticated_user(request)
+        if not user:
+            return _err('AUTHENTICATION_REQUIRED', 401)
+        try:
+            uid = int(d.get('user_id') or 0)
+        except (TypeError, ValueError):
+            uid = 0
+        if uid != user.pk:
+            return _err('FORBIDDEN' if uid else 'USER_ID_REQUIRED', 403 if uid else 400)
         if not uid:
             return _err('USER_ID_REQUIRED')
         analyses = AnalyzedPassword.objects.filter(user_id=uid)
@@ -457,7 +541,7 @@ def api_admin(request):
             'breaches': sum(a.breached_count for a in analyses),
         })
 
-    admin, resp = _require_admin(request, d)
+    admin, resp = _require_admin(request)
     if not admin:
         return resp
 

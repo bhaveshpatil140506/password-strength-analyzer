@@ -32,8 +32,6 @@ const PSA_Validator = {
     const email = document.getElementById('email');
     const pw = document.getElementById('password');
     const pwConfirm = document.getElementById('password_confirm');
-    const sq = document.getElementById('security_question');
-    const sa = document.getElementById('security_answer');
 
     const validFullName = this.validateField(fullName, {
       required: true,
@@ -64,16 +62,7 @@ const PSA_Validator = {
       customMsg: 'Passwords do not match.',
     });
 
-    let validSa = true;
-    if (sq && sq.value && sa) {
-      validSa = this.validateField(sa, {
-        required: true,
-        minLength: 2,
-        customMsg: 'Security answer is required if question is set.',
-      });
-    }
-
-    return validFullName && validUsername && validEmail && validPw && validPwConfirm && validSa;
+    return validFullName && validUsername && validEmail && validPw && validPwConfirm;
   },
 
   /* ---------- Login form ---------- */
@@ -81,31 +70,17 @@ const PSA_Validator = {
     const uname = document.getElementById('username');
     const pw = document.getElementById('password');
 
-    const v1 = this.validateField(uname, { required: true, minLength: 3 });
-    const v2 = this.validateField(pw, { required: true, minLength: 4 });
+    const v1 = this.validateField(uname, { required: true });
+    const v2 = this.validateField(pw, { required: true, maxLength: 8 });
     return v1 && v2;
   },
 
   /* ---------- Password input ---------- */
   validatePassword(input) {
     const pw = input ? input.value : '';
-    let score = 0;
     let msg = '';
-
-    if (!pw) { msg = 'Password is required.'; }
-    else {
-      if (pw.length >= 8) score++;
-      if (pw.length >= 12) score++;
-      if (pw.length >= 16) score++;
-      if (/[a-z]/.test(pw)) score++;
-      if (/[A-Z]/.test(pw)) score++;
-      if (/[0-9]/.test(pw)) score++;
-      if (/[^A-Za-z0-9]/.test(pw)) score++;
-      if (!/(.)\1{2,}/.test(pw)) score++;
-
-      if (score < 4) msg = 'Password is too weak.';
-      else if (pw.length < 8) msg = 'Password must be at least 8 characters.';
-    }
+    if (!pw) msg = 'Password is required.';
+    else if ([...pw].length > 8) msg = 'Use no more than 8 characters.';
 
     if (input) {
       const errEl = document.getElementById('password-error');
@@ -114,9 +89,9 @@ const PSA_Validator = {
         errEl.classList.toggle('show', !!msg);
       }
       input.classList.toggle('invalid', !!msg);
-      input.classList.toggle('valid', !msg && pw.length >= 8);
+      input.classList.toggle('valid', !msg);
     }
-    return score >= 4 && pw.length >= 8;
+    return !msg;
   },
 
   /* ---------- Password strength analysis (inline on keyup) ---------- */
@@ -154,9 +129,9 @@ const PSA_Validator = {
     const list = document.getElementById(criteriaId);
     if (!input || !meter) return;
 
-    const labels = ['length8', 'lowercase', 'uppercase', 'numbers', 'special', 'noRepeat', 'noSequential'];
+    const labels = ['length8', 'length12', 'lowercase', 'uppercase', 'numbers', 'special', 'noRepeat', 'noSequential'];
     const display = {
-      length8: '8+ characters', lowercase: 'Lowercase letters', uppercase: 'Uppercase letters',
+      length8: '8+ characters', length12: '12+ characters', lowercase: 'Lowercase letters', uppercase: 'Uppercase letters',
       numbers: 'Numbers (0-9)', special: 'Special characters', noRepeat: 'No repeated characters',
       noSequential: 'No sequential patterns'
     };

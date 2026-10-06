@@ -3,7 +3,7 @@
  * PASSWORD STRENGTH ANALYZER - INSTALLER
  *
  * 1. Creates the database schema (database/schema.sql)
- * 2. Creates the default admin account  admin / Admin@123
+ * 2. Creates the admin account with a generated or environment-provided password
  *
  * Usage:  http://localhost/Password-Strength-Analyzer/php_backend/install.php
  * Afterwards DELETE or rename this file for security.
@@ -40,25 +40,35 @@ try {
 // ---------- 2) DEFAULT ADMIN ----------
 $uname = 'admin';
 $email = 'admin@psa.local';
-$pass  = 'Admin@123';
-$hash  = password_hash($pass, PASSWORD_DEFAULT);
+$configuredPassword = getenv('PSA_ADMIN_PASSWORD');
+$pass  = $configuredPassword ?: bin2hex(random_bytes(4));
+if (mb_strlen($pass) > 8) {
+    exit("[ERROR] PSA_ADMIN_PASSWORD must be no more than 8 characters.\n");
+}
+$hash  = appPasswordHash($pass);
 
 $st = db()->prepare('SELECT id FROM users WHERE username = ?');
 $st->execute([$uname]);
 
 if ($st->fetch()) {
-    echo "[INFO] Admin account 'admin' already exists - skipping.\n";
+    if ($configuredPassword !== false && $configuredPassword !== '') {
+        db()->prepare('UPDATE users SET password_hash = ? WHERE username = ?')
+            ->execute([appPasswordHash($pass), $uname]);
+        echo "[OK] Admin password reset. Username: admin. Initial password: {$pass}\n";
+    } else {
+        echo "[INFO] Admin account 'admin' already exists - skipping. Set PSA_ADMIN_PASSWORD to reset it.\n";
+    }
 } else {
     db()->prepare(
-        'INSERT INTO users (fullname, username, email, password_hash, is_admin, is_active)
-         VALUES (?, ?, ?, ?, 1, 1)'
+        'INSERT INTO users (fullname, username, email, password_hash, is_admin, is_active, created_at, updated_at)
+         VALUES (?, ?, ?, ?, 1, 1, UTC_TIMESTAMP(), UTC_TIMESTAMP())'
     )->execute(['System Administrator', $uname, $email, $hash]);
-    echo "[OK] Admin account created: admin / Admin@123\n";
+    echo "[OK] Admin account created for username 'admin'. Initial password: {$pass}\n";
 }
 
 // ---------- 3) VERIFY TABLES ----------
 echo "\n== VERIFICATION ==\n";
-$tables = ['users', 'analyzed_passwords', 'common_passwords', 'recommendations', 'reports', 'login_attempts', 'admin_activity_log'];
+$tables = ['users', 'api_sessions', 'analyzed_passwords', 'common_passwords', 'recommendations', 'reports', 'login_attempts', 'admin_activity_log'];
 foreach ($tables as $t) {
     $r = db()->query("SHOW TABLES LIKE '{$t}'")->rowCount();
     echo "  " . ($r ? '[OK]' : '[MISSING!]') . " table: {$t}\n";

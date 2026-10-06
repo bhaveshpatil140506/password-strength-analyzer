@@ -16,16 +16,19 @@ require_once __DIR__ . '/../config/database.php';
 
 $input  = jsonBody();
 $action = $input['action'] ?? $_GET['action'] ?? 'overview';
-$adminId = (int) ($input['admin_id'] ?? $input['user_id'] ?? 0);
-
-if ($adminId <= 0) {
-    respond(false, 'ADMIN_ID_REQUIRED');
-}
+$authenticatedId = authenticatedUserId();
+$adminId = $authenticatedId;
 
 $db = db();
 
 // ---------- ADMIN ONLY (except user_stats, which serves the user dashboard) ----------
-if ($action !== 'user_stats' && !isAdmin($adminId)) {
+if ($action === 'user_stats') {
+    if ((int) ($input['user_id'] ?? 0) !== $authenticatedId) {
+        http_response_code(403);
+        respond(false, 'FORBIDDEN');
+    }
+} elseif (!isAdmin($adminId)) {
+    http_response_code(403);
     respond(false, 'FORBIDDEN :: admin privileges required.');
 }
 
@@ -92,7 +95,8 @@ switch ($action) {
 
     case 'users':
         $rows = $db->query(
-            'SELECT u.*, (SELECT COUNT(*) FROM analyzed_passwords p WHERE p.user_id = u.id) AS analyses
+            'SELECT u.id, u.fullname, u.username, u.email, u.is_admin, u.is_active, u.last_login,
+                    (SELECT COUNT(*) FROM analyzed_passwords p WHERE p.user_id = u.id) AS analyses
              FROM users u ORDER BY u.id ASC'
         )->fetchAll();
         respond(true, 'OK', ['data' => $rows]);
@@ -110,7 +114,7 @@ switch ($action) {
         }
 
         $db->prepare('UPDATE users SET is_active = ? WHERE id = ?')->execute([$state, $target]);
-        $db->prepare('INSERT INTO admin_activity_log (admin_id, action, target_user_id, details) VALUES (?,?,?,?)')
+        $db->prepare('INSERT INTO admin_activity_log (admin_id, action, target_user_id, details, created_at) VALUES (?,?,?,?,UTC_TIMESTAMP())')
             ->execute([$adminId, $state ? 'USER_UNBANNED' : 'USER_BANNED', $target, "admin #{$adminId} toggled user #{$target}"]);
         respond(true, $state ? 'USER_UNBANNED' : 'USER_BANNED');
         break;
@@ -126,7 +130,7 @@ switch ($action) {
         }
 
         $db->prepare('DELETE FROM users WHERE id = ?')->execute([$target]);
-        $db->prepare('INSERT INTO admin_activity_log (admin_id, action, target_user_id, details) VALUES (?,?,?,?)')
+        $db->prepare('INSERT INTO admin_activity_log (admin_id, action, target_user_id, details, created_at) VALUES (?,?,?,?,UTC_TIMESTAMP())')
             ->execute([$adminId, 'USER_DELETED', $target, "admin #{$adminId} deleted user #{$target}"]);
         respond(true, 'USER_DELETED');
         break;

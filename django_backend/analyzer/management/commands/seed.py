@@ -1,4 +1,4 @@
-from django.core.management.base import BaseCommand
+from django.core.management.base import BaseCommand, CommandError
 
 from analyzer.models import CommonPassword, User
 from analyzer.models import hash_password
@@ -25,32 +25,47 @@ class Command(BaseCommand):
 
     def handle(self, *args, **options):
         import hashlib
+        import os
+        import secrets
+
+        configured_admin_password = os.environ.get('PSA_ADMIN_PASSWORD')
+        admin_password = configured_admin_password or secrets.token_urlsafe(6)
+        demo_password = secrets.token_urlsafe(6)
+        if len(admin_password) > 8:
+            raise CommandError('PSA_ADMIN_PASSWORD must be no more than 8 characters.')
 
         admin, created = User.objects.get_or_create(
             username='admin',
             defaults=dict(
                 fullname='System Administrator',
                 email='admin@localhost.local',
-                password_hash=hash_password('Admin@123'),
+                password_hash=hash_password(admin_password),
                 is_admin=True,
                 is_active=True,
             ),
         )
         self.stdout.write(self.style.SUCCESS(
-            f'admin user {"created" if created else "already exists"} (admin / Admin@123)'))
+            f'admin user {"created" if created else "already exists"} (username: admin)'))
+        if not created and configured_admin_password:
+            admin.password_hash = hash_password(configured_admin_password)
+            admin.save(update_fields=['password_hash'])
+        if created or configured_admin_password:
+            self.stdout.write(f'Initial admin password (save it now): {admin_password}')
 
         demo, created = User.objects.get_or_create(
             username='demo',
             defaults=dict(
                 fullname='Demo User',
                 email='demo@localhost.local',
-                password_hash=hash_password('Demo@123'),
+                password_hash=hash_password(demo_password),
                 is_admin=False,
                 is_active=True,
             ),
         )
         self.stdout.write(self.style.SUCCESS(
-            f'demo user {"created" if created else "already exists"} (demo / Demo@123)'))
+            f'demo user {"created" if created else "already exists"} (username: demo)'))
+        if created:
+            self.stdout.write(f'Initial demo password (save it now): {demo_password}')
 
         count = 0
         for rank, plain in enumerate(COMMON_PASSWORDS, start=1):

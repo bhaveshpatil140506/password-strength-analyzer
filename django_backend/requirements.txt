@@ -1,5 +1,6 @@
 Django>=4.2,<5.1
-djangorestframework>=3.14
 PyMySQL>=1.1
 asgiref>=3.7
 pytz
+bcrypt>=4.0
+reportlab>=4.0

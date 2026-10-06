@@ -13,11 +13,6 @@ const PSA_AnalyzerPage = {
       PSA.toast('Enter a password to analyze', 'error');
       return;
     }
-    if (pw.length < 4) {
-      PSA.toast('Minimum 4 characters for analysis', 'error');
-      return;
-    }
-
     PSA.toast('Running deep analysis...', 'info');
 
     PSA_AnalyzerPage.toggleLoading(true);

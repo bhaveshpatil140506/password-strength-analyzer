@@ -1,5 +1,5 @@
 /* ============================================================
-   PASSWORD STRENGTH ANALYZER - AUTH MODULE (Login / Register)
+   PASSWORD STRENGTH ANALYZER - AUTH (Login / Register)
    ============================================================ */
 
 const PSA_Auth = {
@@ -14,8 +14,6 @@ const PSA_Auth = {
       username: document.getElementById('username').value.trim(),
       email: document.getElementById('email').value.trim(),
       password: document.getElementById('password').value,
-      security_question: (document.getElementById('security_question') || {}).value || '',
-      security_answer: (document.getElementById('security_answer') || {}).value.trim() || '',
     };
 
     const btn = document.getElementById('register-btn');
@@ -66,7 +64,7 @@ const PSA_Auth = {
         PSA.session = res.session;
         PSA.toast('Authentication successful', 'success');
         setTimeout(() => {
-          window.location.href = res.session.user.is_admin ? 'admin_dashboard.html' : 'dashboard.html';
+          window.location.href = res.session.is_admin ? 'admin_dashboard.html' : 'dashboard.html';
         }, 800);
       } else {
         PSA.toast(res.message || 'Login failed.', 'error');

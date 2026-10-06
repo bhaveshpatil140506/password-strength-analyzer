@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
@@ -26,10 +26,7 @@
 <h2 class="section-title" style="font-size:1.3rem; margin-bottom:14px;">AUTHENTICATION</h2>
     <div id="alert-box"></div>
 
-    <div class="terminal-text muted" style="font-size:.75rem; margin-bottom:14px; border:1px dashed var(--border-glow); padding:8px 12px; border-radius:8px;">
-      <span style="color:var(--matrix-green)">$</span> ssh psa@secure-node <span class="blink">▮</span><br>
-      <span style="color:var(--text-muted)">default admin :: admin / Admin@123</span>
-    </div>
+    <p class="muted" style="font-size:.88rem; margin:0 0 16px;">Sign in to view your saved analyses and reports.</p>
 
     <form id="login-form" novalidate>
       <div class="form-group">
@@ -40,7 +37,7 @@
       <div class="form-group">
         <label for="password">PASSWORD</label>
         <div class="input-wrapper">
-          <input type="password" id="password" placeholder="Enter your password" autocomplete="current-password">
+          <input type="password" id="password" placeholder="Enter your password" autocomplete="current-password" maxlength="8">
           <button type="button" class="toggle-password" data-target="password">●</button>
         </div>
         <div class="error-msg" id="password-error"></div>
@@ -51,7 +48,7 @@
     <div class="form-link">Don't have an account? <a href="register.html">Register now</a></div>
   </div>
 
-  <footer class="footer"><p>PASSWORD STRENGTH ANALYZER — AUTHENTICATION NODE</p></footer>
+  <footer class="footer"><p>PASSGUARD — AUTHENTICATION NODE</p></footer>
 
   <script src="js/common.js"></script>
   <script src="js/validations.js"></script>

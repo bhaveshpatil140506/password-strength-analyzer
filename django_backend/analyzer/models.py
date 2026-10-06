@@ -7,13 +7,33 @@ a SEPARATE database name to avoid table collisions. Both backends are
 kept compatible here for demo purposes.
 """
 
-from django.contrib.auth.hashers import make_password, check_password
+from django.contrib.auth.hashers import check_password
 from django.db import models
 
 
 def hash_password(raw: str) -> str:
-    """bcrypt (Django default for password-style hashes)."""
-    return make_password(raw, hasher='pbkdf2_sha256')
+    """Use bcrypt over a SHA-256 pre-digest for PHP/Django interoperability."""
+    import base64
+    import hashlib
+    import bcrypt
+    material = base64.b64encode(hashlib.sha256(raw.encode('utf-8')).digest())
+    return bcrypt.hashpw(material, bcrypt.gensalt(rounds=12)).decode('ascii')
+
+
+def verify_app_password(raw: str, encoded: str) -> bool:
+    """Verify shared PHP/Django bcrypt hashes and legacy Django hashes."""
+    if encoded.startswith(('$2a$', '$2b$', '$2y$')):
+        import base64
+        import hashlib
+        import bcrypt
+        normalized = '$2b$' + encoded[4:] if encoded.startswith('$2y$') else encoded
+        material = base64.b64encode(hashlib.sha256(raw.encode('utf-8')).digest())
+        try:
+            stored = normalized.encode('ascii')
+            return bcrypt.checkpw(material, stored) or bcrypt.checkpw(raw.encode('utf-8'), stored)
+        except (ValueError, TypeError):
+            return False
+    return check_password(raw, encoded)
 
 
 class User(models.Model):
@@ -34,10 +54,20 @@ class User(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     def verify_password(self, raw: str) -> bool:
-        return check_password(raw, self.password_hash)
+        return verify_app_password(raw, self.password_hash)
 
     def __str__(self):
         return f'<User {self.username}>'
+
+
+class ApiSession(models.Model):
+    class Meta:
+        db_table = 'api_sessions'
+
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='api_sessions', db_constraint=False)
+    token_hash = models.CharField(max_length=64, unique=True)
+    expires_at = models.DateTimeField()
+    created_at = models.DateTimeField(auto_now_add=True)
 
 
 class AnalyzedPassword(models.Model):

@@ -11,27 +11,12 @@ computes entropy and crack-times, and produces pentest-grade reports.
 
 ---
 
-## ✅ Modules Implemented (all requested modules)
-
-| Module | Where |
-|---|---|
-| User Registration / Login | `register.html`, `login.html` + server validations, bcrypt, brute-force lockout |
-| Password Input | `analyzer.html` — live strength meter, show/hide, criteria checklist |
-| Password Strength Analysis | Entropy (Shannon), 8-factor scoring, crack-time estimation |
-| Common Password Detection | Local top-50 list + live HaveIBeenPwned breach API |
-| Security Recommendations | Personalized + severity-ranked tips (from your history) |
-| Password History | `history.html` — store / view / detail / delete every analysis |
-| Report Generation | `report.html` — executive report, charts, CSV/JSON/Print-PDF export |
-| Admin Dashboard | `admin_dashboard.html` — user ban/delete, weekly charts, live audit log |
-
----
-
 ## 📁 Project Structure
 
 ```
 Password Strength analyzer/
 ├── frontend/
-│   ├── index.html           (landing/modules overview)
+│   ├── index.html           (landing page)
 │   ├── register.html        (registration)
 │   ├── login.html           (login)
 │   ├── analyzer.html        (password input + strength analysis)
@@ -78,18 +63,18 @@ Password Strength analyzer/
    http://localhost/Password-Strength-Analyzer/php_backend/install.php
    ```
    This imports `database/schema.sql`, creates all tables and the default admin.
-5. **Delete `install.php`** afterwards (security).
+5. Save the one-time admin password printed by the installer, then **delete `install.php`** (security).
 6. Open the app:
    ```
    http://localhost/Password-Strength-Analyzer/frontend/index.html
    ```
 
-> If your htdocs path differs, edit `API_BASE` in
-> `frontend/js/common.js` to point at `php_backend/api/`.
+> The PHP API path is derived from the served project location. For a custom
+> deployment, define `window.PSA_API_BASE` before loading `js/common.js`.
 
-### Default admin
+### Initial admin
 - username: `admin`
-- password: `Admin@123`
+- password: generated once by the installer; set `PSA_ADMIN_PASSWORD` before installation or seeding to choose/reset it.
 
 ---
 
@@ -114,7 +99,7 @@ pip install -r requirements.txt
 python manage.py makemigrations analyzer
 python manage.py migrate
 
-# 4) Seed default admin, demo user + common-passwords table
+# 4) Seed admin, demo user + common-passwords table (prints one-time generated passwords)
 python manage.py seed
 
 # 5) Run
@@ -164,8 +149,8 @@ powershell -ExecutionPolicy Bypass -File scripts\start_phpmyadmin.ps1
 ### Default accounts
 | Role | Username | Password |
 |---|---|---|
-| Admin | `admin` | `Admin@123` |
-| Demo user | `demo` | `Demo@123` |
+| Admin | `admin` | Printed once when a new account is created |
+| Demo user | `demo` | Printed once when a new account is created by Django seeding |
 | phpMyAdmin | `root` | *(empty)* |
 
 > **Two-backend note:** both backends share one MySQL database, so they stay in sync
@@ -181,7 +166,7 @@ powershell -ExecutionPolicy Bypass -File scripts\start_phpmyadmin.ps1
 
 | Endpoint | Method | Body | Purpose |
 |---|---|---|---|
-| `register.php` / `api/register` | POST | fullname, username, email, password, security_question?, security_answer? | Create account |
+| `register.php` / `api/register` | POST | fullname, username, email, password | Create account |
 | `login.php` / `api/login` | POST | username, password | Authenticate (lockout after 5 fails / 15 min) |
 | `history.php` / `api/history` | POST | action: `list`|`save`|`detail`|`delete`, user_id, ... | History CRUD |
 | `report.php` / `api/report` | POST | action: `generate`|`full`, user_id, result_data? | Generate report |
@@ -199,20 +184,23 @@ Computed **client-side** (JS) and **server-side** (Django `services.py`):
 - Crack-time estimate at 10 billion guesses/second
 - Link-speed risk table
 - HaveIBeenPwned **k-anonymity** breach lookup (`checkBreached`)
+- Analyzer mode accepts passwords of any nonzero length. Account registration and login currently allow up to 8 characters and reject common passwords.
 
 ---
 
 ## 🛡️ Security Notes
 
-- Passwords are **never stored in plaintext** — only masked placeholders persist to DB.
-- Registration/location hashes use bcrypt (`password_hash` default / Django `make_password`).
+- Analyzed passwords are stored only as masked placeholders; account passwords use salted bcrypt hashes over a SHA-256 pre-digest so both APIs can verify long passwords consistently.
 - Login attempts are audited with IP + user-agent; accounts lock after repeated failures.
-- Admin area is protected by `is_admin` checks server-side on both backends.
+- Protected API requests use expiring bearer sessions stored as token hashes; admin actions also check `is_admin` server-side.
+- Before deployment, set `PSA_DEBUG=0`, `PSA_DJANGO_SECRET_KEY`, `PSA_ALLOWED_HOSTS`, and the `PSA_DB_*` connection variables. Keep secrets out of Git.
 - `.htaccess` sets security headers on the PHP API.
 
 ---
 
-## ⚠️ Demo Mode
+## Offline use
 
-Every page gracefully falls back to **demo data** when the PHP/Django API is offline,
-so you can preview the UI immediately by opening `frontend/index.html` directly.
+The standalone analyzer page can run without an application server, but breach
+checks need an internet connection. Accounts, saved history, reports, and admin
+features require a configured PHP or Django API and database. Account pages show
+a connection message instead of presenting sample data as real account data.

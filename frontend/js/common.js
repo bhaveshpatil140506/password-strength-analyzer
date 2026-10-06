@@ -3,7 +3,11 @@
    ============================================================ */
 
 const PSA = {
-  API_BASE: 'http://localhost/Password-Strength-Analyzer/php_backend/api/',
+  API_BASE: window.PSA_API_BASE || (() => {
+    const path = window.location.pathname;
+    const projectRoot = path.includes('/frontend/') ? path.split('/frontend/')[0] : '';
+    return `${window.location.origin}${projectRoot}/php_backend/api/`;
+  })(),
 
   /* ---------- Toast notifications ---------- */
   toast(msg, type = 'success') {
@@ -11,6 +15,8 @@ const PSA = {
     if (!container) {
       container = document.createElement('div');
       container.className = 'toast-container';
+      container.setAttribute('role', 'status');
+      container.setAttribute('aria-live', 'polite');
       document.body.appendChild(container);
     }
     const t = document.createElement('div');
@@ -50,6 +56,10 @@ const PSA = {
 
   async api(endpoint, method = 'POST', data = null) {
     const opts = { method, headers: {} };
+    const activeSession = this.session;
+    if (activeSession && activeSession.token) {
+      opts.headers.Authorization = `Bearer ${activeSession.token}`;
+    }
     if (data) {
       opts.headers['Content-Type'] = 'application/json';
       opts.body = JSON.stringify(data);
@@ -63,6 +73,7 @@ const PSA = {
       const map = {
         'register.php': 'register',
         'login.php': 'login',
+        'session.php': 'session',
         'history.php': 'history',
         'report.php': 'report',
         'admin.php': 'admin',
@@ -75,7 +86,12 @@ const PSA = {
       url = `${base}${map[name] || name}`;
     }
     const res = await fetch(url, opts);
-    return res.json();
+    const body = await res.json();
+    if (res.status === 401 && endpoint.split('?')[0] !== 'login.php') {
+      this.session = null;
+      if (!location.pathname.endsWith('login.html')) location.href = 'login.html';
+    }
+    return body;
   },
 
   /* ---------- Friendly date/time ---------- */
@@ -105,8 +121,10 @@ const PSA = {
   },
 
   logout() {
-    this.session = null;
-    window.location.href = 'login.html';
+    this.api('session.php', 'POST', { action: 'logout' }).catch(() => {}).finally(() => {
+      this.session = null;
+      window.location.href = 'login.html';
+    });
   },
 
   applySessionToUI() {
@@ -117,7 +135,7 @@ const PSA = {
     if (s) {
       navAuth.innerHTML = `
         <a href="dashboard.html" class="${location.pathname.includes('dashboard') ? 'active' : ''}">Dashboard</a>
-        <a href="#" onclick="PSA.logout()" style="color:var(--toxic-red)">Logout</a>`;
+        <a href="#" onclick="event.preventDefault(); PSA.logout()" style="color:var(--toxic-red)">Sign out</a>`;
       const adminNav = document.getElementById('nav-admin');
       if (s.is_admin && adminNav) adminNav.style.display = '';
     } else {
@@ -141,11 +159,15 @@ const PSA = {
     const canvas = document.getElementById('matrix-canvas');
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
-    let w = (canvas.width = window.innerWidth);
-    let h = (canvas.height = window.innerHeight);
+    let w, h, cols, drops;
+    const resize = () => {
+      w = canvas.width = window.innerWidth;
+      h = canvas.height = window.innerHeight;
+      cols = Math.floor(w / 18);
+      drops = Array(cols).fill(1);
+    };
+    resize();
     const chars = '01アイウエオカキクケコサシスセソタチツテトナニヌネノABCDEF0123456789#$%&';
-    const cols = Math.floor(w / 18);
-    const drops = Array(cols).fill(1);
 
     function draw() {
       if (document.hidden) return;
@@ -164,14 +186,12 @@ const PSA = {
     document.addEventListener('visibilitychange', () => {
       if (document.hidden) {
         clearInterval(rainTimer);
+        rainTimer = null;
       } else if (!rainTimer) {
         rainTimer = setInterval(draw, 50);
       }
     });
-    window.addEventListener('resize', () => {
-      w = canvas.width = window.innerWidth;
-      h = canvas.height = window.innerHeight;
-    });
+    window.addEventListener('resize', resize);
   },
 
   /* ---------- Typing title ---------- */
@@ -192,13 +212,44 @@ const PSA = {
   /* ---------- Password visibility toggles ---------- */
   initPasswordToggles() {
     document.querySelectorAll('.toggle-password').forEach(btn => {
+      btn.setAttribute('aria-label', 'Show password');
+      btn.setAttribute('aria-pressed', 'false');
       btn.addEventListener('click', () => {
         const input = document.getElementById(btn.dataset.target);
         if (!input) return;
         const isPw = input.type === 'password';
         input.type = isPw ? 'text' : 'password';
         btn.textContent = isPw ? '◎' : '●';
+        btn.setAttribute('aria-label', isPw ? 'Hide password' : 'Show password');
+        btn.setAttribute('aria-pressed', String(isPw));
       });
+    });
+  },
+
+  initNavigation() {
+    const button = document.querySelector('.burger');
+    const links = document.getElementById('nav-links');
+    if (!button || !links) return;
+    button.removeAttribute('onclick');
+    button.type = 'button';
+    button.setAttribute('aria-label', 'Open navigation');
+    button.setAttribute('aria-controls', 'nav-links');
+    button.setAttribute('aria-expanded', 'false');
+    const close = () => {
+      links.classList.remove('open');
+      button.setAttribute('aria-expanded', 'false');
+      button.setAttribute('aria-label', 'Open navigation');
+    };
+    button.addEventListener('click', () => {
+      const open = links.classList.toggle('open');
+      button.setAttribute('aria-expanded', String(open));
+      button.setAttribute('aria-label', open ? 'Close navigation' : 'Open navigation');
+    });
+    links.addEventListener('click', event => {
+      if (event.target.closest('a')) close();
+    });
+    document.addEventListener('keydown', event => {
+      if (event.key === 'Escape') close();
     });
   },
 
@@ -223,7 +274,8 @@ const PSA = {
 document.addEventListener('DOMContentLoaded', () => {
   PSA.applySessionToUI();
   PSA.initPasswordToggles();
+  PSA.initNavigation();
   if (document.getElementById('matrix-canvas')) PSA.initMatrix();
   const ty = document.getElementById('typewriter-text');
-  if (ty) PSA.initTypewriter(ty, ty.dataset.text || 'PASSWORD STRENGTH ANALYZER');
+  if (ty) PSA.initTypewriter(ty, ty.dataset.text || 'PASSGUARD');
 });
